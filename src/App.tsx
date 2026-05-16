@@ -25,9 +25,24 @@ import { AlbumPage } from './pages/AlbumPage'
 import { BackupPage } from './pages/BackupPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
-import { exportReportCsv, exportReportPdf, exportReportPng } from './reports/exporters'
+import {
+  exportReportCsv,
+  exportReportMobilePng,
+  exportReportPdf,
+  exportReportPng,
+  exportReportWhatsappText,
+  type ReportExportFormat,
+  type WhatsappTextExportResult,
+} from './reports/exporters'
 import { buildReportRows, buildReportSummary, type ReportSectionOption } from './reports/reportData'
-import type { AlbumSettings, BackupMode, InventoryItem, PageId, StickerFilter, ThemeMode } from './types'
+import type {
+  AlbumSettings,
+  AlbumStickerFilter,
+  BackupMode,
+  InventoryItem,
+  PageId,
+  ThemeMode,
+} from './types'
 
 function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard')
@@ -40,18 +55,34 @@ function App() {
   const [packEntryText, setPackEntryText] = useState('')
   const [selectedSectionCode, setSelectedSectionCode] = useState<string>(defaultSectionCode)
   const [albumSearch, setAlbumSearch] = useState('')
-  const [stickerFilter, setStickerFilter] = useState<StickerFilter>('all')
-  const [reportFilter, setReportFilter] = useState<StickerFilter>('missing')
+  const [stickerFilter, setStickerFilter] = useState<AlbumStickerFilter>('all')
+  const [showSpecialStickersOnly, setShowSpecialStickersOnly] = useState(false)
+  const [reportFilter, setReportFilter] = useState<AlbumStickerFilter>('missing')
+  const [showReportSpecialOnly, setShowReportSpecialOnly] = useState(false)
   const [reportSectionCode, setReportSectionCode] = useState<ReportSectionOption>('all')
   const [backupMode, setBackupMode] = useState<BackupMode>('replace')
   const [statusMessage, setStatusMessage] = useState('Carregando dados locais...')
   const [backupMessage, setBackupMessage] = useState('Nenhum backup recuperado nesta sessao.')
+  const [reportExportMessage, setReportExportMessage] = useState('')
+  const [reportExportingFormat, setReportExportingFormat] = useState<ReportExportFormat | null>(null)
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem('album-copa-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!reportExportMessage || reportExportingFormat) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setReportExportMessage('')
+    }, 4200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [reportExportMessage, reportExportingFormat])
 
   useEffect(() => {
     async function loadData() {
@@ -111,42 +142,50 @@ function App() {
       const quantity = inventoryByStickerId.get(sticker.id)?.quantity ?? 0
       const matchesSection =
         selectedSectionCode === 'all' || sticker.sectionCode === selectedSectionCode
-      const matchesFilter =
+      const matchesBaseFilter =
         stickerFilter === 'all' ||
         (stickerFilter === 'missing' && quantity === 0) ||
         (stickerFilter === 'owned' && quantity > 0) ||
-        (stickerFilter === 'repeated' && quantity > 1) ||
-        (stickerFilter === 'special' && sticker.isSpecial)
+        (stickerFilter === 'repeated' && quantity > 1)
+      const matchesSpecialFilter = !showSpecialStickersOnly || sticker.isSpecial
       const matchesSearch =
         !query ||
         normalizeSearch(
           `${sticker.displayCode} ${sticker.title} ${sticker.sectionName} ${sticker.sectionCode}`,
         ).includes(query)
 
-      return matchesSection && matchesFilter && matchesSearch
+      return matchesSection && matchesBaseFilter && matchesSpecialFilter && matchesSearch
     })
-  }, [albumSearch, inventoryByStickerId, selectedSectionCode, stickerFilter])
+  }, [albumSearch, inventoryByStickerId, selectedSectionCode, showSpecialStickersOnly, stickerFilter])
   const reportSectionLabel = useMemo(() => {
     if (reportSectionCode === 'all') {
-      return 'Todas as secoes'
+      return 'Todas as seções'
     }
 
     const section = orderedStickerSections.find((item) => item.code === reportSectionCode)
-    return section ? `${section.code} - ${section.name}` : 'Secao selecionada'
+    return section ? `${section.code} - ${section.name}` : 'Seção selecionada'
   }, [reportSectionCode])
   const reportRows = useMemo(
-    () => buildReportRows(orderedStickers, catalogInventory, reportFilter, reportSectionCode),
-    [catalogInventory, reportFilter, reportSectionCode],
+    () =>
+      buildReportRows(
+        orderedStickers,
+        catalogInventory,
+        reportFilter,
+        reportSectionCode,
+        showReportSpecialOnly,
+      ),
+    [catalogInventory, reportFilter, reportSectionCode, showReportSpecialOnly],
   )
   const reportSummary = useMemo(
     () =>
       buildReportSummary(
         reportRows,
-        settings.albumNickname || 'Album Copa 2026',
+        settings.albumNickname || 'Álbum Copa 2026',
         reportFilter,
         reportSectionLabel,
+        showReportSpecialOnly,
       ),
-    [reportFilter, reportRows, reportSectionLabel, settings.albumNickname],
+    [reportFilter, reportRows, reportSectionLabel, settings.albumNickname, showReportSpecialOnly],
   )
   const teamProgressStats = useMemo(
     () =>
@@ -245,7 +284,11 @@ function App() {
     }
   }
 
-  async function applyParsedCodes(parsed: ReturnType<typeof parseStickerCodes>, source: 'quick' | 'pack') {
+  async function applyParsedCodes(
+    parsed: ReturnType<typeof parseStickerCodes>,
+    source: 'quick' | 'pack',
+    operation: 'add' | 'remove' = 'add',
+  ) {
     if (parsed.totalValid === 0) {
       setStatusMessage('Nenhum codigo valido encontrado.')
       return
@@ -257,10 +300,17 @@ function App() {
     }
 
     const inventoryMap = new Map(catalogInventory.map((item) => [item.stickerId, item.quantity]))
-    const changedItems = [...parsed.counts.entries()].map(([stickerId, count]) => ({
-      stickerId,
-      quantity: (inventoryMap.get(stickerId) ?? 0) + count,
-    }))
+    const changedItems = [...parsed.counts.entries()].map(([stickerId, count]) => {
+      const currentQuantity = inventoryMap.get(stickerId) ?? 0
+
+      return {
+        stickerId,
+        quantity:
+          operation === 'remove'
+            ? Math.max(0, currentQuantity - count)
+            : currentQuantity + count,
+      }
+    })
     const optimisticSavedAt = new Date().toISOString()
 
     setInventory((current) => {
@@ -269,10 +319,12 @@ function App() {
 
       return [
         ...unchanged,
-        ...changedItems.map((item) => ({
-          ...item,
-          updatedAt: optimisticSavedAt,
-        })),
+        ...changedItems
+          .filter((item) => item.quantity > 0)
+          .map((item) => ({
+            ...item,
+            updatedAt: optimisticSavedAt,
+          })),
       ]
     })
 
@@ -284,9 +336,10 @@ function App() {
       const invalidNote = parsed.invalidCodes.length
         ? ` ${parsed.invalidCodes.length} codigo(s) ignorado(s).`
         : ''
+      const actionMessage = operation === 'remove' ? 'removida(s)' : 'adicionada(s)'
 
       setSettings((current) => ({ ...current, lastSavedAt }))
-      setStatusMessage(`${parsed.totalValid} figurinha(s) adicionada(s).${invalidNote}`)
+      setStatusMessage(`${parsed.totalValid} figurinha(s) ${actionMessage}.${invalidNote}`)
 
       if (source === 'quick') {
         setQuickEntryText('')
@@ -301,7 +354,18 @@ function App() {
     }
   }
 
-  async function handleExportReport(format: 'csv' | 'pdf' | 'png') {
+  async function handleExportReport(format: ReportExportFormat) {
+    const formatLabel: Record<ReportExportFormat, string> = {
+      csv: 'CSV',
+      pdf: 'PDF',
+      png: 'PNG',
+      mobilePng: 'imagem para celular',
+      whatsappText: 'texto para WhatsApp',
+    }
+
+    setReportExportingFormat(format)
+    setReportExportMessage(`Preparando ${formatLabel[format]}...`)
+
     try {
       if (format === 'csv') {
         exportReportCsv(reportRows, reportSummary)
@@ -315,10 +379,31 @@ function App() {
         exportReportPng(reportRows, reportSummary)
       }
 
-      setStatusMessage(`Relatorio ${format.toUpperCase()} exportado.`)
+      if (format === 'mobilePng') {
+        exportReportMobilePng(reportRows, reportSummary)
+      }
+
+      let whatsappResult: WhatsappTextExportResult | undefined
+
+      if (format === 'whatsappText') {
+        whatsappResult = await exportReportWhatsappText(reportRows, reportSummary)
+      }
+
+      const successMessage =
+        format === 'whatsappText'
+          ? whatsappResult === 'copied'
+            ? 'Texto copiado.'
+            : 'Texto baixado como TXT.'
+          : `Relatorio ${formatLabel[format]} exportado.`
+
+      setStatusMessage(successMessage)
+      setReportExportMessage(successMessage)
     } catch (error) {
       console.error(error)
-      setStatusMessage(`Nao foi possivel exportar ${format.toUpperCase()}.`)
+      setStatusMessage('Nao foi possivel exportar o relatorio.')
+      setReportExportMessage('Nao foi possivel exportar o relatorio.')
+    } finally {
+      setReportExportingFormat(null)
     }
   }
 
@@ -349,6 +434,7 @@ function App() {
             onQuickEntryTextChange={setQuickEntryText}
             onPackEntryTextChange={setPackEntryText}
             onApplyQuickEntry={() => void applyParsedCodes(quickEntryPreview, 'quick')}
+            onRemoveQuickEntry={() => void applyParsedCodes(quickEntryPreview, 'quick', 'remove')}
             onApplyPackEntry={() => void applyParsedCodes(packEntryPreview, 'pack')}
           />
         )}
@@ -359,11 +445,13 @@ function App() {
             selectedSectionCode={selectedSectionCode}
             albumSearch={albumSearch}
             stickerFilter={stickerFilter}
+            showSpecialStickersOnly={showSpecialStickersOnly}
             visibleStickers={visibleStickers}
             sectionsWithStats={sectionsWithStats}
             inventoryByStickerId={inventoryByStickerId}
             onSearchChange={setAlbumSearch}
             onFilterChange={setStickerFilter}
+            onSpecialFilterToggle={() => setShowSpecialStickersOnly((current) => !current)}
             onSectionChange={setSelectedSectionCode}
             onStickerQuantityChange={(stickerId, quantity) =>
               void handleStickerQuantityChange(stickerId, quantity)
@@ -374,12 +462,25 @@ function App() {
         {activePage === 'reports' && (
           <ReportsPage
             reportFilter={reportFilter}
+            showSpecialOnly={showReportSpecialOnly}
             reportSectionCode={reportSectionCode}
             reportSectionLabel={reportSectionLabel}
             reportRows={reportRows}
             reportSummary={reportSummary}
-            onFilterChange={setReportFilter}
-            onSectionChange={setReportSectionCode}
+            reportExportMessage={reportExportMessage}
+            reportExportingFormat={reportExportingFormat}
+            onFilterChange={(filter) => {
+              setReportFilter(filter)
+              setReportExportMessage('')
+            }}
+            onSpecialFilterToggle={() => {
+              setShowReportSpecialOnly((current) => !current)
+              setReportExportMessage('')
+            }}
+            onSectionChange={(sectionCode) => {
+              setReportSectionCode(sectionCode)
+              setReportExportMessage('')
+            }}
             onExportReport={(format) => void handleExportReport(format)}
           />
         )}

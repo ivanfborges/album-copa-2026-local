@@ -2,6 +2,8 @@ export type PageId = 'dashboard' | 'album' | 'reports' | 'backup'
 
 export type StickerFilter = 'all' | 'missing' | 'owned' | 'repeated' | 'special'
 
+export type AlbumStickerFilter = Exclude<StickerFilter, 'special'>
+
 export type ThemeMode = 'light' | 'dark'
 
 export type StickerType =

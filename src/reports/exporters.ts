@@ -1,4 +1,15 @@
+import { getFlagEmojiForSection } from '../data/flagEmojis'
 import type { ReportRow, ReportSummary } from './reportData'
+
+export type ReportExportFormat = 'csv' | 'pdf' | 'png' | 'mobilePng' | 'whatsappText'
+export type WhatsappTextExportResult = 'copied' | 'downloaded'
+
+type CompactReportGroup = {
+  sectionCode: string
+  sectionName: string
+  group: string
+  items: string[]
+}
 
 const fileDate = () => new Date().toISOString().slice(0, 10)
 
@@ -38,6 +49,129 @@ function formatGeneratedAt(value: string) {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+function compactCount(summary: ReportSummary) {
+  if (summary.filterLabel === 'Repetidas') {
+    return summary.repeatedTotal
+  }
+
+  if (summary.filterLabel === 'Faltantes') {
+    return summary.missingRows
+  }
+
+  return summary.totalRows
+}
+
+function compactTitle(summary: ReportSummary) {
+  return `Figurinhas ${summary.filterLabel}`.toUpperCase()
+}
+
+function stickerNumber(row: ReportRow) {
+  return row.code.replace(new RegExp(`^${row.sectionCode}\\s*`, 'i'), '').trim() || row.code
+}
+
+function compactItemLabel(row: ReportRow, summary: ReportSummary) {
+  const number = stickerNumber(row)
+
+  if (summary.filterLabel === 'Repetidas' && row.quantity > 1) {
+    return `${number} (x${row.quantity - 1})`
+  }
+
+  return number
+}
+
+export function buildCompactReportGroups(
+  rows: readonly ReportRow[],
+  summary: ReportSummary,
+): CompactReportGroup[] {
+  const groups = new Map<string, CompactReportGroup>()
+
+  rows.forEach((row) => {
+    const current =
+      groups.get(row.sectionCode) ??
+      ({
+        sectionCode: row.sectionCode,
+        sectionName: row.sectionName,
+        group: row.group,
+        items: [],
+      } satisfies CompactReportGroup)
+
+    current.items.push(compactItemLabel(row, summary))
+    groups.set(row.sectionCode, current)
+  })
+
+  return [...groups.values()]
+}
+
+export function buildWhatsappReportText(rows: readonly ReportRow[], summary: ReportSummary) {
+  const groups = buildCompactReportGroups(rows, summary)
+  const lines = ['🏆 Copa 2026', `📦 ${compactTitle(summary)} (${compactCount(summary)})`, '']
+
+  if (groups.length === 0) {
+    lines.push('Nenhuma figurinha encontrada para esse filtro.')
+    return lines.join('\n')
+  }
+
+  groups.forEach((group, index) => {
+    const flag = getFlagEmojiForSection(group.sectionCode)
+    const sectionLabel = flag ? `${flag} ${group.sectionCode}` : group.sectionCode
+
+    lines.push(`${sectionLabel}: ${group.items.join(', ')}`)
+
+    if (index < groups.length - 1) {
+      lines.push('')
+    }
+  })
+
+  return lines.join('\n')
+}
+
+function wrapCompactItems(
+  context: CanvasRenderingContext2D,
+  sectionCode: string,
+  items: readonly string[],
+  maxWidth: number,
+) {
+  const lines: string[] = []
+  let current = `${sectionCode} `
+
+  items.forEach((item) => {
+    const candidate = current.endsWith(' ') ? `${current}${item}` : `${current}, ${item}`
+
+    if (context.measureText(candidate).width <= maxWidth || current === `${sectionCode} `) {
+      current = candidate
+      return
+    }
+
+    lines.push(current)
+    current = item
+  })
+
+  if (current.trim()) {
+    lines.push(current)
+  }
+
+  return lines
+}
+
+function drawRoundRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  const safeRadius = Math.min(radius, width / 2, height / 2)
+
+  context.beginPath()
+  context.moveTo(x + safeRadius, y)
+  context.arcTo(x + width, y, x + width, y + height, safeRadius)
+  context.arcTo(x + width, y + height, x, y + height, safeRadius)
+  context.arcTo(x, y + height, x, y, safeRadius)
+  context.arcTo(x, y, x + width, y, safeRadius)
+  context.closePath()
 }
 
 export function exportReportCsv(rows: readonly ReportRow[], summary: ReportSummary) {
@@ -259,4 +393,148 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
   document.body.append(link)
   link.click()
   link.remove()
+}
+
+export function exportReportMobilePng(rows: readonly ReportRow[], summary: ReportSummary) {
+  const groups = buildCompactReportGroups(rows, summary)
+  const width = 1080
+  const padding = 48
+  const contentWidth = width - padding * 2
+  const headerHeight = 250
+  const groupGap = 20
+  const cardPadding = 26
+  const sectionLineHeight = 34
+  const itemLineHeight = 38
+  const footerHeight = 52
+  const measureCanvas = document.createElement('canvas')
+  const measureContext = measureCanvas.getContext('2d')
+
+  if (!measureContext) {
+    throw new Error('Canvas indisponivel para exportar PNG mobile.')
+  }
+
+  measureContext.font = '700 30px Arial'
+
+  const measuredGroups = groups.map((group) => {
+    const itemLines = wrapCompactItems(
+      measureContext,
+      group.sectionCode,
+      group.items,
+      contentWidth - cardPadding * 2,
+    )
+    const height = cardPadding * 2 + sectionLineHeight + itemLines.length * itemLineHeight
+
+    return {
+      ...group,
+      itemLines,
+      height,
+    }
+  })
+  const emptyHeight = groups.length === 0 ? 150 : 0
+  const height =
+    headerHeight +
+    measuredGroups.reduce((total, group) => total + group.height + groupGap, 0) +
+    emptyHeight +
+    footerHeight +
+    padding
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    throw new Error('Canvas indisponivel para exportar PNG mobile.')
+  }
+
+  canvas.width = width
+  canvas.height = Math.max(720, height)
+
+  context.fillStyle = '#0b1120'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+
+  const headerGradient = context.createLinearGradient(0, 0, width, 210)
+  headerGradient.addColorStop(0, '#12372f')
+  headerGradient.addColorStop(1, '#0b1120')
+  context.fillStyle = headerGradient
+  context.fillRect(0, 0, width, 220)
+
+  context.fillStyle = '#f8fafc'
+  context.font = '800 46px Arial'
+  context.fillText('Copa 2026', padding, 70)
+  context.font = '800 34px Arial'
+  context.fillText(compactTitle(summary), padding, 128)
+
+  context.fillStyle = '#34d399'
+  context.fillRect(padding, 150, 210, 6)
+
+  context.fillStyle = '#d7dde8'
+  context.font = '600 22px Arial'
+  context.fillText(`${compactCount(summary)} item(ns)`, padding, 190)
+  context.fillStyle = '#9aa5b5'
+  context.font = '400 20px Arial'
+  context.fillText(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, padding + 170, 190)
+
+  let y = headerHeight
+
+  if (measuredGroups.length === 0) {
+    context.fillStyle = '#d7dde8'
+    context.font = '700 28px Arial'
+    context.fillText('Nenhuma figurinha encontrada para esse filtro.', padding, y)
+    y += emptyHeight
+  }
+
+  measuredGroups.forEach((group) => {
+    drawRoundRect(context, padding, y, contentWidth, group.height, 18)
+    context.fillStyle = '#172033'
+    context.fill()
+    context.strokeStyle = '#273244'
+    context.lineWidth = 2
+    context.stroke()
+
+    const titleY = y + cardPadding
+    context.fillStyle = '#34d399'
+    context.font = '800 26px Arial'
+    context.fillText(group.sectionCode, padding + cardPadding, titleY)
+
+    context.fillStyle = '#f8fafc'
+    context.font = '800 26px Arial'
+    context.fillText(group.sectionName, padding + cardPadding + 92, titleY)
+
+    context.fillStyle = '#d7dde8'
+    context.font = '700 30px Arial'
+    group.itemLines.forEach((line, index) => {
+      context.fillText(line, padding + cardPadding, titleY + 40 + index * itemLineHeight)
+    })
+
+    y += group.height + groupGap
+  })
+
+  context.fillStyle = '#64748b'
+  context.font = '500 18px Arial'
+  context.fillText('Album Copa 2026 Local', padding, canvas.height - 34)
+
+  const url = canvas.toDataURL('image/png')
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${reportBaseName(summary)}-celular.png`
+  document.body.append(link)
+  link.click()
+  link.remove()
+}
+
+export async function exportReportWhatsappText(
+  rows: readonly ReportRow[],
+  summary: ReportSummary,
+): Promise<WhatsappTextExportResult> {
+  const text = buildWhatsappReportText(rows, summary)
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return 'copied'
+    } catch {
+      // Some browsers block clipboard access; downloading a TXT keeps the export usable.
+    }
+  }
+
+  downloadBlob(text, 'text/plain;charset=utf-8', `${reportBaseName(summary)}-whatsapp.txt`)
+  return 'downloaded'
 }

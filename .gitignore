@@ -17,12 +17,19 @@ dist-ssr
 coverage
 .vite
 .cache
+*.tsbuildinfo
 
 # Local app exports and private collection data
 album-copa-2026-backup-*.json
 album-copa-2026-*.csv
 album-copa-2026-*.pdf
 album-copa-2026-*.png
+album-copa-2026-*.txt
+
+# Optional local/custom brand image
+public/brand/custom-mark.*
+public/brand/sidebar-art.*
+public/brand/dashboard-side-art.*
 
 # Editor directories and files
 .vscode/*

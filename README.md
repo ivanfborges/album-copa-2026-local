@@ -4,7 +4,7 @@
 
 A local-first web app for managing a personal World Cup 2026 sticker album collection from the desktop.
 
-The app runs in the browser, saves progress automatically with IndexedDB, and exports portable JSON backups plus CSV, PDF, and PNG reports.
+The app runs in the browser, saves progress automatically with IndexedDB, and exports portable JSON backups plus CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text reports.
 
 ## Features
 
@@ -14,12 +14,13 @@ The app runs in the browser, saves progress automatically with IndexedDB, and ex
 - Automatic duplicate detection.
 - Filters for all, missing, owned, duplicates, and special stickers.
 - Search by sticker code, name, or team.
-- Fast entry for pasted sticker codes.
+- Fast entry for adding or removing pasted sticker codes.
 - Pack mode for registering exactly 7 stickers.
 - Overall and per-team statistics.
 - Team flags rendered as SVG icons.
 - JSON backup with replace or merge restore modes.
-- CSV, PDF, and PNG report exports.
+- CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text report exports.
+- Special-sticker reports can be combined with missing, owned, duplicate, or full lists.
 - Light/dark theme.
 
 ## Tech Stack
@@ -133,15 +134,19 @@ Backup import validates the app identifier, backup version, album id, and sticke
 
 On the **Reports** screen, choose:
 
-- content: all, missing, owned, duplicates, or special stickers;
+- content: all, missing, owned, duplicates, with an optional special-sticker filter;
 - section: all sections or one specific team/section;
-- format: CSV, PDF, or PNG.
+- format: CSV, PDF, PNG, mobile-friendly PNG (`IMG/CEL`), or WhatsApp text (`TXT/WPP`).
+
+The WhatsApp text export is compact and grouped by album order. It starts with a short title marker, for example `🏆 Copa 2026`, followed by the selected list category.
 
 ## Privacy
 
 The app does not use login, backend services, tokens, or API keys. No personal data is sent to servers during normal use.
 
 The `.env.example` file is only a placeholder. The app does not require environment variables.
+
+Optional local images can be placed in `public/brand/` by following [public/brand/README.md](public/brand/README.md). These files are ignored by Git so personal or licensed assets are not published accidentally.
 
 ## Legal Notice
 
@@ -172,7 +177,7 @@ Files that should not be committed are covered by `.gitignore`, including:
 - `.env`
 - local caches
 - exported JSON backups
-- exported CSV, PDF, and PNG reports
+- exported CSV, PDF, PNG, and WhatsApp text reports
 
 ## Notes
 

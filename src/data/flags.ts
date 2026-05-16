@@ -35,6 +35,7 @@ import pa from 'flag-icons/flags/4x3/pa.svg'
 import py from 'flag-icons/flags/4x3/py.svg'
 import pt from 'flag-icons/flags/4x3/pt.svg'
 import qa from 'flag-icons/flags/4x3/qa.svg'
+import sa from 'flag-icons/flags/4x3/sa.svg'
 import za from 'flag-icons/flags/4x3/za.svg'
 import gbSct from 'flag-icons/flags/4x3/gb-sct.svg'
 import sn from 'flag-icons/flags/4x3/sn.svg'
@@ -84,6 +85,7 @@ const flagSrcBySectionCode: Record<string, string> = {
   PAR: py,
   POR: pt,
   QAT: qa,
+  KSA: sa,
   RSA: za,
   SCO: gbSct,
   SEN: sn,

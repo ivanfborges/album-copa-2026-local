@@ -26,7 +26,7 @@ src/
   data/         album catalog, groups, and metadata
   db/           Dexie, IndexedDB, and persistence operations
   domain/       small business rules, such as stats and quick entry
-  reports/      report data builders and CSV/PDF/PNG exporters
+  reports/      report data builders and CSV/PDF/PNG/mobile/WhatsApp exporters
   App.tsx       screen composition and main user flows
 ```
 
@@ -52,7 +52,7 @@ The app uses IndexedDB through Dexie. The local database is named `album-copa-20
 - `inventory`: sticker quantities.
 - `meta`: preferences and dates, such as album nickname and last saved timestamp.
 
-Every quantity change, quick entry action, or pack entry action is saved automatically in the browser.
+Every quantity change, quick add/remove action, or pack entry action is saved automatically in the browser.
 
 ## Backup
 
@@ -89,17 +89,23 @@ Reports are generated from the current catalog plus local inventory and can be f
 - special stickers;
 - section/team.
 
+The special-sticker filter is additive, so it can be combined with missing, owned, duplicate, or full lists.
+
 Formats:
 
 - CSV: spreadsheet-friendly export.
 - PDF: paginated report.
 - PNG: shareable image.
+- Mobile PNG: vertical, compact image optimized for phone viewing during trades.
+- WhatsApp text: compact grouped text for sharing missing or duplicate lists in chat. It is ordered by album section and starts with a trophy title plus a category marker.
 
 ## Privacy And Security
 
 The app does not require login, tokens, API keys, or `.env` files to work. User data stays in the local browser and only leaves the computer when the user exports a file.
 
 The project does not include official mascots or official proprietary logos. The visual identity included in the repository is custom to this app; flags are rendered through open-source SVG icons.
+
+Optional local images in `public/brand/` can customize the UI during personal use. These files are ignored by Git by default.
 
 Files ignored by Git:
 
@@ -109,7 +115,7 @@ Files ignored by Git:
 - `.env` files
 - local caches
 - JSON backups exported by the app
-- CSV, PDF, and PNG reports exported by the app
+- CSV, PDF, PNG, and WhatsApp text reports exported by the app
 
 Recommended checks before publishing:
 

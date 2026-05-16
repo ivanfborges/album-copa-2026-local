@@ -1,6 +1,9 @@
-import { ClipboardList, Download, Package, Upload } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ClipboardList, Download, Package, Upload } from 'lucide-react'
 import { albumSummary } from '../data/album'
 import { FlagIcon } from '../components/FlagIcon'
+import { BrandMark } from '../components/BrandMark'
+import { OptionalLocalImage } from '../components/OptionalLocalImage'
 import { formatDateTime } from '../app/catalog'
 import type { AlbumSettings, TeamProgressStats } from '../types'
 import type { ParsedStickerCodes } from '../domain/quickEntry'
@@ -20,6 +23,7 @@ type DashboardPageProps = {
   onQuickEntryTextChange: (value: string) => void
   onPackEntryTextChange: (value: string) => void
   onApplyQuickEntry: () => void
+  onRemoveQuickEntry: () => void
   onApplyPackEntry: () => void
 }
 
@@ -37,14 +41,18 @@ export function DashboardPage({
   onQuickEntryTextChange,
   onPackEntryTextChange,
   onApplyQuickEntry,
+  onRemoveQuickEntry,
   onApplyPackEntry,
 }: DashboardPageProps) {
+  const [isTeamStatsExpanded, setIsTeamStatsExpanded] = useState(false)
+  const completedTeams = teamProgressStats.filter((item) => item.completion === 100).length
+
   return (
     <section className="page-band dashboard-layout">
       <div className="dashboard-main">
         <div className="page-header">
           <div>
-            <p className="eyebrow">Visao geral</p>
+            <p className="eyebrow">Visão geral</p>
             <h2>{settings.albumNickname}</h2>
           </div>
           <div className="header-actions">
@@ -78,7 +86,7 @@ export function DashboardPage({
 
         <section className="tool-panel">
           <div className="progress-header">
-            <span>Progresso do album</span>
+            <span>Progresso do álbum</span>
             <strong>{stats.completion}%</strong>
           </div>
           <div className="progress-track" aria-hidden="true">
@@ -91,8 +99,8 @@ export function DashboardPage({
             <div className="quick-entry-header">
               <ClipboardList size={20} aria-hidden="true" />
               <div>
-                <strong>Entrada rapida</strong>
-                <span>Cole codigos como BRA1, ARG 10 ou FWC3</span>
+                <strong>Entrada rápida</strong>
+                <span>Cole códigos como BRA1, ARG 10 ou FWC3</span>
               </div>
             </div>
             <textarea
@@ -108,9 +116,14 @@ export function DashboardPage({
                   ? ` - ${quickEntryPreview.invalidCodes.length} ignorada(s)`
                   : ''}
               </span>
-              <button type="button" className="primary-action compact-action" onClick={onApplyQuickEntry}>
-                Adicionar
-              </button>
+              <div className="quick-entry-actions">
+                <button type="button" className="danger-action compact-action" onClick={onRemoveQuickEntry}>
+                  Remover
+                </button>
+                <button type="button" className="primary-action compact-action" onClick={onApplyQuickEntry}>
+                  Adicionar
+                </button>
+              </div>
             </div>
           </article>
 
@@ -132,7 +145,7 @@ export function DashboardPage({
               <span style={{ width: `${Math.min(100, (packEntryPreview.totalValid / 7) * 100)}%` }} />
             </div>
             <div className="quick-entry-footer">
-              <span>{packEntryPreview.totalValid}/7 validas</span>
+              <span>{packEntryPreview.totalValid}/7 válidas</span>
               <button type="button" className="primary-action compact-action" onClick={onApplyPackEntry}>
                 Salvar pacote
               </button>
@@ -140,50 +153,70 @@ export function DashboardPage({
           </article>
         </section>
 
-        <section className="tool-panel section-progress-panel">
-          <div className="section-progress-header">
+        <section
+          className={
+            isTeamStatsExpanded
+              ? 'tool-panel section-progress-panel expanded'
+              : 'tool-panel section-progress-panel collapsed'
+          }
+        >
+          <button
+            type="button"
+            className="section-progress-header section-progress-toggle"
+            aria-expanded={isTeamStatsExpanded}
+            aria-controls="team-progress-grid"
+            onClick={() => setIsTeamStatsExpanded((current) => !current)}
+          >
             <div>
-              <strong>Estatisticas por selecao</strong>
-              <span>Progresso separado por grupo e selecao</span>
+              <strong>Estatísticas por seleção</strong>
+              <span>Progresso separado por grupo e seleção</span>
             </div>
-            <span>{teamProgressStats.filter((item) => item.completion === 100).length} completas</span>
-          </div>
-          <div className="team-progress-grid">
-            {teamProgressStats.map((section) => (
-              <article key={section.code} className="team-progress-card">
-                <div>
-                  <FlagIcon sectionCode={section.code} label={section.name} className="team-flag" />
-                  <span className="team-code">{section.code}</span>
-                  <strong>{section.name}</strong>
-                </div>
-                <small>
-                  {section.group ? `Grupo ${section.group} - ` : ''}
-                  {section.owned}/{section.total}
-                </small>
-                <div className="mini-progress" aria-hidden="true">
-                  <span style={{ width: `${section.completion}%` }} />
-                </div>
-              </article>
-            ))}
-          </div>
+            <span className="section-progress-meta">
+              <span>{completedTeams} completas</span>
+              <ChevronDown size={18} aria-hidden="true" />
+            </span>
+          </button>
+          {isTeamStatsExpanded ? (
+            <div id="team-progress-grid" className="team-progress-grid">
+              {teamProgressStats.map((section) => (
+                <article key={section.code} className="team-progress-card">
+                  <div>
+                    <FlagIcon sectionCode={section.code} label={section.name} className="team-flag" />
+                    <span className="team-code">{section.code}</span>
+                    <strong>{section.name}</strong>
+                  </div>
+                  <small>
+                    {section.group ? `Grupo ${section.group} - ` : ''}
+                    {section.owned}/{section.total}
+                  </small>
+                  <div className="mini-progress" aria-hidden="true">
+                    <span style={{ width: `${section.completion}%` }} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="tool-panel form-panel">
-          <label htmlFor="album-nickname">Apelido do album</label>
+          <label htmlFor="album-nickname">Apelido do álbum</label>
           <input
             id="album-nickname"
             type="text"
             value={settings.albumNickname}
             onChange={(event) => onNicknameChange(event.target.value)}
           />
-          <p className="meta-line">Ultimo salvamento: {formatDateTime(settings.lastSavedAt)}</p>
+          <p className="meta-line">Último salvamento: {formatDateTime(settings.lastSavedAt)}</p>
         </section>
       </div>
 
-      <aside className="dashboard-visual" aria-label="Identidade visual do projeto">
-        <img src="/brand/app-mark.svg" alt="" />
-        <strong>Album Copa 2026 Local</strong>
-        <span>Controle pessoal, offline-first e sem backend.</span>
+      <aside className="dashboard-side" aria-label="Identidade visual do projeto">
+        <section className="dashboard-visual">
+          <BrandMark alt="" />
+          <strong>Álbum Copa 2026 Local</strong>
+          <span>Controle pessoal, offline-first e sem backend.</span>
+        </section>
+        <OptionalLocalImage src="/brand/dashboard-side-art.png" className="dashboard-side-art" />
       </aside>
     </section>
   )

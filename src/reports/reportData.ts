@@ -1,5 +1,5 @@
 import { groupBySectionCode, sectionOrderByCode } from '../data/groups'
-import type { InventoryItem, Sticker, StickerFilter, StickerType } from '../types'
+import type { AlbumStickerFilter, InventoryItem, Sticker, StickerFilter, StickerType } from '../types'
 
 export type ReportSectionOption = 'all' | string
 
@@ -54,8 +54,9 @@ export function sortStickersByAlbumOrder(stickers: readonly Sticker[]) {
 export function buildReportRows(
   stickers: readonly Sticker[],
   inventory: readonly InventoryItem[],
-  filter: StickerFilter,
+  filter: AlbumStickerFilter,
   sectionCode: ReportSectionOption,
+  specialOnly = false,
 ) {
   const inventoryById = new Map(inventory.map((item) => [item.stickerId, item]))
 
@@ -78,35 +79,41 @@ export function buildReportRows(
       }
     })
     .filter((row) => {
+      const matchesSpecialFilter = !specialOnly || row.isSpecial
+
       if (filter === 'missing') {
-        return row.quantity === 0
+        return row.quantity === 0 && matchesSpecialFilter
       }
 
       if (filter === 'owned') {
-        return row.quantity > 0
+        return row.quantity > 0 && matchesSpecialFilter
       }
 
       if (filter === 'repeated') {
-        return row.quantity > 1
+        return row.quantity > 1 && matchesSpecialFilter
       }
 
-      if (filter === 'special') {
-        return row.isSpecial
-      }
-
-      return true
+      return matchesSpecialFilter
     })
 }
 
 export function buildReportSummary(
   rows: readonly ReportRow[],
   title: string,
-  filter: StickerFilter,
+  filter: AlbumStickerFilter,
   sectionLabel: string,
+  specialOnly = false,
 ): ReportSummary {
+  const baseFilterLabel = reportFilterLabels[filter]
+  const filterLabel = specialOnly
+    ? filter === 'all'
+      ? reportFilterLabels.special
+      : `${baseFilterLabel} especiais`
+    : baseFilterLabel
+
   return {
     title,
-    filterLabel: reportFilterLabels[filter],
+    filterLabel,
     sectionLabel,
     generatedAt: new Date().toISOString(),
     totalRows: rows.length,

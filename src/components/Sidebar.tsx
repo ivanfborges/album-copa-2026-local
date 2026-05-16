@@ -1,10 +1,12 @@
 import { BarChart3, BookOpen, DatabaseBackup, Home, Moon, Sun } from 'lucide-react'
+import { BrandMark } from './BrandMark'
+import { OptionalLocalImage } from './OptionalLocalImage'
 import type { PageId, ThemeMode } from '../types'
 
 const pages: Array<{ id: PageId; label: string; icon: typeof Home }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'album', label: 'Album', icon: BookOpen },
-  { id: 'reports', label: 'Relatorios', icon: BarChart3 },
+  { id: 'dashboard', label: 'Início', icon: Home },
+  { id: 'album', label: 'Álbum', icon: BookOpen },
+  { id: 'reports', label: 'Relatórios', icon: BarChart3 },
   { id: 'backup', label: 'Backup', icon: DatabaseBackup },
 ]
 
@@ -25,13 +27,15 @@ export function Sidebar({
   onNavigate,
   onToggleTheme,
 }: SidebarProps) {
+  const visibleStatusMessage = statusMessage.replace(/\.+$/, '')
+
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <img className="brand-emblem" src="/brand/app-mark.svg" alt="Album Copa 2026 Local" />
+        <BrandMark className="brand-emblem" alt="Álbum Copa 2026 Local" />
         <div>
           <p className="eyebrow">Tracker local</p>
-          <h1>Album Copa 2026</h1>
+          <h1>Álbum Copa 2026</h1>
         </div>
       </div>
 
@@ -57,9 +61,13 @@ export function Sidebar({
         <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
       </button>
 
+      <div className="sidebar-art-slot" aria-hidden="true">
+        <OptionalLocalImage src="/brand/sidebar-art.png" className="sidebar-art" />
+      </div>
+
       <div className="sidebar-footer">
         <span className={isReady ? 'status-dot ready' : 'status-dot'} />
-        <span>{statusMessage}</span>
+        <span>{visibleStatusMessage}</span>
       </div>
     </aside>
   )

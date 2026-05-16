@@ -1,25 +1,26 @@
-# Album Copa 2026 Local
+# Álbum Copa 2026
 
 [English](README.md)
 
-Aplicativo web local para controlar figurinhas do album Panini da Copa 2026 pelo computador.
+Aplicativo web local para controlar figurinhas do álbum Panini da Copa 2026 pelo computador.
 
-O app roda no navegador, salva automaticamente no IndexedDB e permite exportar backup JSON e relatorios em CSV, PDF e PNG.
+O app roda no navegador, salva automaticamente no IndexedDB e permite exportar backup JSON e relatórios em CSV, PDF, PNG, imagem para celular e texto para WhatsApp.
 
 ## Funcionalidades
 
-- Catalogo com 980 figurinhas.
-- Organizacao por secoes, selecoes e grupos.
+- Catálogo com 980 figurinhas.
+- Organização por seções, seleções e grupos.
 - Controle de quantidade por figurinha.
-- Deteccao automatica de repetidas.
+- Detecção automática de repetidas.
 - Filtros por todas, faltantes, tenho, repetidas e especiais.
-- Busca por codigo, nome ou selecao.
-- Entrada rapida por codigos colados.
+- Filtro de especiais combinável com faltantes, tenho, repetidas ou todas.
+- Busca por código, nome ou seleção.
+- Entrada rápida para adicionar ou remover códigos colados.
 - Modo pacotinho com 7 figurinhas.
-- Estatisticas gerais e por selecao.
-- Bandeiras por selecao usando icones SVG.
-- Backup JSON com restauracao por substituicao ou mesclagem.
-- Relatorios CSV, PDF e PNG.
+- Estatísticas gerais e por seleção.
+- Bandeiras por seleção usando ícones SVG.
+- Backup JSON com restauração por substituição ou mesclagem.
+- Relatórios CSV, PDF, PNG, imagem para celular e texto para WhatsApp.
 - Tema claro/escuro.
 
 ## Tecnologias
@@ -34,7 +35,7 @@ O app roda no navegador, salva automaticamente no IndexedDB e permite exportar b
 - CSS nativo
 - Vitest
 
-Veja tambem: [docs/ARCHITECTURE.pt-BR.md](docs/ARCHITECTURE.pt-BR.md)
+Veja também: [docs/ARCHITECTURE.pt-BR.md](docs/ARCHITECTURE.pt-BR.md)
 
 ## Requisitos
 
@@ -50,9 +51,9 @@ npm --version
 
 ## Como Rodar Localmente
 
-Guia passo a passo para usuarios menos tecnicos: [docs/INSTALL.pt-BR.md](docs/INSTALL.pt-BR.md)
+Guia passo a passo para usuários menos técnicos: [docs/INSTALL.pt-BR.md](docs/INSTALL.pt-BR.md)
 
-Instale as dependencias:
+Instale as dependências:
 
 ```bash
 npm install
@@ -70,7 +71,7 @@ Abra no navegador:
 http://localhost:5173/
 ```
 
-Use sempre o mesmo endereco (`localhost` ou `127.0.0.1`), porque o IndexedDB e salvo por origem do navegador.
+Use sempre o mesmo endereço (`localhost` ou `127.0.0.1`), porque o IndexedDB é salvo por origem do navegador.
 
 Para parar o servidor:
 
@@ -90,7 +91,7 @@ Roda o app em desenvolvimento.
 npm run build
 ```
 
-Gera a versao de producao em `dist/`.
+Gera a versão de produção em `dist/`.
 
 ```bash
 npm run preview
@@ -108,17 +109,17 @@ Executa o ESLint.
 npm test
 ```
 
-Executa testes unitarios.
+Executa testes unitários.
 
 ```bash
 npm audit --audit-level=moderate
 ```
 
-Verifica vulnerabilidades conhecidas nas dependencias.
+Verifica vulnerabilidades conhecidas nas dependências.
 
 ## Dados E Backup
 
-Os dados do usuario ficam salvos localmente no navegador via IndexedDB.
+Os dados do usuário ficam salvos localmente no navegador via IndexedDB.
 
 Para portabilidade, use a tela **Backup**:
 
@@ -127,31 +128,35 @@ Para portabilidade, use a tela **Backup**:
 - **Substituir**: troca os dados atuais pelo arquivo.
 - **Mesclar**: combina dados mantendo a maior quantidade por figurinha.
 
-O backup valida o identificador do app, versao, album e codigos existentes no catalogo.
+O backup valida o identificador do app, versão, álbum e códigos existentes no catálogo.
 
-## Relatorios
+## Relatórios
 
-Na tela **Relatorios**, escolha:
+Na tela **Relatórios**, escolha:
 
-- conteudo: todas, faltantes, tenho, repetidas ou especiais;
-- secao: todas ou uma selecao especifica;
-- formato: CSV, PDF ou PNG.
+- conteúdo: todas, faltantes, tenho, repetidas e filtro opcional de especiais;
+- seção: todas ou uma seleção específica;
+- formato: CSV, PDF, PNG, imagem para celular (`IMG/CEL`) ou texto para WhatsApp (`TXT/WPP`).
+
+A exportação de texto para WhatsApp é compacta e agrupada na ordem do álbum. Ela começa com um marcador curto, como `🏆 Copa 2026`, seguido pela categoria selecionada.
 
 ## Privacidade
 
-O app nao usa login, backend, token ou chave de API. Nenhum dado pessoal e enviado para servidores durante o uso normal.
+O app não usa login, backend, token ou chave de API. Nenhum dado pessoal é enviado para servidores durante o uso normal.
 
-O arquivo `.env.example` existe apenas como placeholder. O app nao precisa de variaveis de ambiente.
+O arquivo `.env.example` existe apenas como placeholder. O app não precisa de variáveis de ambiente.
+
+Imagens locais opcionais podem ser colocadas em `public/brand/` seguindo [public/brand/README.md](public/brand/README.md). Esses arquivos são ignorados pelo Git para evitar publicar imagens pessoais ou licenciadas por acidente.
 
 ## Aviso Legal
 
-Este projeto e pessoal, nao oficial e nao possui afiliacao com FIFA, Panini ou organizadores da Copa do Mundo.
+Este projeto é pessoal, não oficial e não possui afiliação com FIFA, Panini ou organizadores da Copa do Mundo.
 
-Por seguranca de publicacao, o repositorio nao inclui mascotes oficiais nem logos oficiais como assets proprietarios. A identidade visual do app e propria, e as bandeiras sao exibidas por icones SVG open-source.
+Por segurança de publicação, o repositório não inclui mascotes oficiais nem logos oficiais como assets proprietários. A identidade visual do app é própria, e as bandeiras são exibidas por ícones SVG open-source.
 
-## Licenca
+## Licença
 
-Distribuido sob a licenca MIT. Veja [LICENSE](LICENSE).
+Distribuído sob a licença MIT. Veja [LICENSE](LICENSE).
 
 ## Antes De Publicar
 
@@ -164,7 +169,7 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
-Arquivos que nao devem subir estao no `.gitignore`, incluindo:
+Arquivos que não devem subir estão no `.gitignore`, incluindo:
 
 - `node_modules/`
 - `dist/`
@@ -172,8 +177,8 @@ Arquivos que nao devem subir estao no `.gitignore`, incluindo:
 - `.env`
 - caches locais
 - backups JSON exportados
-- relatorios CSV, PDF e PNG exportados
+- relatórios CSV, PDF, PNG e textos para WhatsApp exportados
 
-## Observacoes
+## Observações
 
-Este e um projeto pessoal/hobby para controle local de colecao.
+Este é um projeto pessoal/hobby para controle local de coleção.

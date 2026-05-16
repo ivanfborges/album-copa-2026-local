@@ -2,104 +2,110 @@
 
 [English](ARCHITECTURE.md)
 
-Este projeto e um aplicativo web local para controle de figurinhas do album Panini da Copa 2026. A aplicacao roda no navegador, nao precisa de backend e armazena os dados do usuario localmente.
+Este projeto é um aplicativo web local para controle de figurinhas do álbum Panini da Copa 2026. A aplicação roda no navegador, não precisa de backend e armazena os dados do usuário localmente.
 
 ## Tecnologias
 
-- React: interface e estado da aplicacao.
-- TypeScript: tipagem do dominio, catalogo e exportacoes.
+- React: interface e estado da aplicação.
+- TypeScript: tipagem do domínio, catálogo e exportações.
 - Vite: servidor local de desenvolvimento e build.
-- Dexie/IndexedDB: banco local do navegador para progresso do album.
-- jsPDF: geracao de relatorios PDF sob demanda.
-- Canvas API: geracao de relatorios PNG.
-- flag-icons: icones SVG de bandeiras com renderizacao consistente entre plataformas.
+- Dexie/IndexedDB: banco local do navegador para progresso do álbum.
+- jsPDF: geração de relatórios PDF sob demanda.
+- Canvas API: geração de relatórios PNG.
+- flag-icons: ícones SVG de bandeiras com renderização consistente entre plataformas.
 - CSS nativo: layout, tema claro/escuro e responsividade.
-- Vitest: testes unitarios de regras de negocio e relatorios.
+- Vitest: testes unitários de regras de negócio, relatórios e exportações compactas.
 
-## Visao Geral
+## Visão Geral
 
 ```txt
 src/
-  backup/       validacao, importacao e exportacao de backup JSON
-  components/   componentes reutilizaveis de interface
+  backup/       validação, importação e exportação de backup JSON
+  components/   componentes reutilizáveis de interface
   pages/        telas principais do app
-  data/         catalogo do album, grupos e metadados
-  db/           Dexie, IndexedDB e operacoes de persistencia
-  domain/       regras de negocio pequenas, como estatisticas e entrada rapida
-  reports/      montagem de dados e exportadores CSV/PDF/PNG
-  App.tsx       composicao das telas e fluxos principais
+  data/         catálogo do álbum, grupos, bandeiras e metadados
+  db/           Dexie, IndexedDB e operações de persistência
+  domain/       regras de negócio pequenas, como estatísticas e entrada rápida
+  reports/      montagem de dados e exportadores CSV/PDF/PNG/mobile/WhatsApp
+  App.tsx       composição das telas e fluxos principais
 ```
 
-O catalogo de figurinhas fica versionado em `src/data/catalog.ts`. O progresso do usuario nao fica nesse arquivo: ele e salvo no IndexedDB do navegador.
+O catálogo de figurinhas fica versionado em `src/data/catalog.ts`. O progresso do usuário não fica nesse arquivo: ele é salvo no IndexedDB do navegador.
 
 ## Dados
 
-O catalogo usa os principais modelos:
+O catálogo usa os principais modelos:
 
-- `Sticker`: identificador, codigo visivel, secao/selecao, numero, nome, tipo, especial e ordem.
-- `StickerSection`: secao do album, como `PANINI`, `FWC`, `BRA`, `ARG`.
-- `InventoryItem`: quantidade local do usuario para cada figurinha.
+- `Sticker`: identificador, código visível, seção/seleção, número, nome, tipo, especial e ordem.
+- `StickerSection`: seção do álbum, como `PANINI`, `FWC`, `BRA`, `ARG`.
+- `InventoryItem`: quantidade local do usuário para cada figurinha.
 
-Codigos sao normalizados sem espaco, por exemplo:
+Códigos são normalizados sem espaço, por exemplo:
 
 - `BRA 1` vira `BRA1`
 - `FWC 3` vira `FWC3`
 
-## Persistencia
+## Persistência
 
-A aplicacao usa IndexedDB via Dexie. O banco local se chama `album-copa-2026` e possui duas tabelas:
+A aplicação usa IndexedDB via Dexie. O banco local se chama `album-copa-2026` e possui duas tabelas:
 
 - `inventory`: quantidades das figurinhas.
-- `meta`: preferencias e datas, como apelido do album e ultimo salvamento.
+- `meta`: preferências e datas, como apelido do álbum e último salvamento.
 
-Cada clique em `+`, `-`, entrada rapida ou pacotinho salva automaticamente no navegador.
+Cada clique em `+`, `-`, entrada rápida, remoção rápida ou pacotinho salva automaticamente no navegador.
 
 ## Backup
 
-O backup JSON e o formato portavel dos dados do usuario. Ele inclui:
+O backup JSON é o formato portátil dos dados do usuário. Ele inclui:
 
 - identificador do app;
-- versao do backup;
-- id do album;
-- data de exportacao;
-- preferencias;
-- inventario.
+- versão do backup;
+- id do álbum;
+- data de exportação;
+- preferências;
+- inventário.
 
-Na importacao, o app valida:
+Na importação, o app valida:
 
 - se o arquivo pertence a este app;
-- se a versao e compativel;
-- se os codigos existem no catalogo;
-- se as quantidades sao validas;
-- se ha duplicados no arquivo.
+- se a versão é compatível;
+- se os códigos existem no catálogo;
+- se as quantidades são válidas;
+- se há duplicados no arquivo.
 
 Modos suportados:
 
-- Substituir: troca o inventario atual pelo backup.
-- Mesclar: mantem a maior quantidade para cada figurinha.
+- Substituir: troca o inventário atual pelo backup.
+- Mesclar: mantém a maior quantidade para cada figurinha.
 
-## Relatorios
+## Relatórios
 
-Os relatorios usam os dados atuais do catalogo + inventario local e podem ser filtrados por:
+Os relatórios usam os dados atuais do catálogo + inventário local e podem ser filtrados por:
 
 - todas;
 - faltantes;
 - tenho;
 - repetidas;
 - especiais;
-- secao/selecao.
+- seção/seleção.
+
+O filtro de especiais é aditivo, então pode ser combinado com faltantes, tenho, repetidas ou todas.
 
 Formatos:
 
 - CSV: planilhas.
-- PDF: relatorio paginado.
-- PNG: imagem compartilhavel.
+- PDF: relatório paginado.
+- PNG: imagem compartilhável.
+- PNG celular (`IMG/CEL`): imagem vertical e compacta otimizada para consulta no celular durante trocas.
+- Texto WhatsApp (`TXT/WPP`): texto compacto agrupado na ordem do álbum para compartilhar faltantes ou repetidas em conversas. Ele começa com um título com troféu e um marcador de categoria.
 
-## Privacidade E Seguranca
+## Privacidade E Segurança
 
-O app nao precisa de login, token, chave de API ou `.env` para funcionar. Os dados do usuario ficam no navegador local e so saem do computador quando o proprio usuario exporta um arquivo.
+O app não precisa de login, token, chave de API ou `.env` para funcionar. Os dados do usuário ficam no navegador local e só saem do computador quando o próprio usuário exporta um arquivo.
 
-O projeto nao inclui mascotes oficiais ou logos oficiais proprietarios. A identidade visual incluida no repositorio e propria do app; bandeiras sao renderizadas por icones SVG open-source.
+O projeto não inclui mascotes oficiais ou logos oficiais proprietários. A identidade visual incluída no repositório é própria do app; bandeiras são renderizadas por ícones SVG open-source.
+
+Imagens locais opcionais em `public/brand/` podem customizar a interface durante o uso pessoal. Esses arquivos são ignorados pelo Git por padrão.
 
 Arquivos ignorados pelo Git:
 
@@ -109,9 +115,10 @@ Arquivos ignorados pelo Git:
 - arquivos `.env`
 - caches locais
 - backups JSON exportados pelo app
-- relatorios CSV, PDF e PNG exportados pelo app
+- relatórios CSV, PDF, PNG e textos para WhatsApp exportados pelo app
+- imagens locais opcionais em `public/brand/`
 
-Antes de publicar, os comandos recomendados sao:
+Antes de publicar, os comandos recomendados são:
 
 ```bash
 npm test
@@ -120,8 +127,8 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
-## Atualizacao Do Catalogo
+## Atualização Do Catálogo
 
-O script `scripts/generate-catalog.mjs` foi usado para gerar o catalogo local a partir de uma fonte publica. Ele valida a contagem total esperada antes de sobrescrever `src/data/catalog.ts`.
+O script `scripts/generate-catalog.mjs` foi usado para gerar o catálogo local a partir de uma fonte pública. Ele valida a contagem total esperada antes de sobrescrever `src/data/catalog.ts`.
 
-Como o catalogo fica versionado, o app nao depende de internet durante o uso normal.
+Como o catálogo fica versionado, o app não depende de internet durante o uso normal.

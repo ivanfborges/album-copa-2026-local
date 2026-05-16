@@ -112,6 +112,13 @@ Avoid uploading this backup file to public repositories, because it contains you
 
 Close and reopen the terminal. If it still does not work, reinstall Node.js LTS and make sure the option to add it to PATH is enabled.
 
+On Windows PowerShell, if you see a script execution policy error for `npm.ps1`, run the commands with `npm.cmd` instead:
+
+```bash
+npm.cmd install
+npm.cmd run dev
+```
+
 ### The page does not open
 
 Check whether the terminal is still running `npm run dev`.
