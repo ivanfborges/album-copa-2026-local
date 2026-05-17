@@ -1,17 +1,26 @@
 import { useState } from 'react'
 
 type OptionalLocalImageProps = {
-  src: string
+  src?: string
+  sources?: string[]
   className?: string
   alt?: string
 }
 
-export function OptionalLocalImage({ src, className, alt = '' }: OptionalLocalImageProps) {
-  const [isMissing, setIsMissing] = useState(false)
+export function OptionalLocalImage({ src, sources, className, alt = '' }: OptionalLocalImageProps) {
+  const imageSources = sources ?? (src ? [src] : [])
+  const [sourceIndex, setSourceIndex] = useState(0)
 
-  if (isMissing) {
+  if (sourceIndex >= imageSources.length) {
     return null
   }
 
-  return <img className={className} src={src} alt={alt} onError={() => setIsMissing(true)} />
+  return (
+    <img
+      className={className}
+      src={imageSources[sourceIndex]}
+      alt={alt}
+      onError={() => setSourceIndex((currentIndex) => currentIndex + 1)}
+    />
+  )
 }

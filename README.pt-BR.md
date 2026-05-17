@@ -20,7 +20,7 @@ O app roda no navegador, salva automaticamente no IndexedDB e permite exportar b
 - Estatísticas gerais e por seleção.
 - Bandeiras por seleção usando ícones SVG.
 - Backup JSON com restauração por substituição ou mesclagem.
-- Relatórios CSV, PDF, PNG, imagem para celular e texto para WhatsApp.
+- Relatórios compactos em CSV, PDF, PNG, imagem para celular e texto para WhatsApp, agrupados na ordem do álbum.
 - Tema claro/escuro.
 
 ## Tecnologias
@@ -138,7 +138,7 @@ Na tela **Relatórios**, escolha:
 - seção: todas ou uma seleção específica;
 - formato: CSV, PDF, PNG, imagem para celular (`IMG/CEL`) ou texto para WhatsApp (`TXT/WPP`).
 
-A exportação de texto para WhatsApp é compacta e agrupada na ordem do álbum. Ela começa com um marcador curto, como `🏆 Copa 2026`, seguido pela categoria selecionada.
+A prévia e todos os formatos de exportação usam um layout compacto agrupado na ordem do álbum. Cada seção mostra apenas os números das figurinhas do filtro selecionado, e relatórios de repetidas incluem quantidades como `7 (x2)`. O texto para WhatsApp começa com um marcador curto, como `🏆 Copa 2026`, seguido pela categoria selecionada.
 
 ## Privacidade
 

@@ -19,7 +19,7 @@ The app runs in the browser, saves progress automatically with IndexedDB, and ex
 - Overall and per-team statistics.
 - Team flags rendered as SVG icons.
 - JSON backup with replace or merge restore modes.
-- CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text report exports.
+- Compact CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text report exports grouped by album order.
 - Special-sticker reports can be combined with missing, owned, duplicate, or full lists.
 - Light/dark theme.
 
@@ -138,7 +138,7 @@ On the **Reports** screen, choose:
 - section: all sections or one specific team/section;
 - format: CSV, PDF, PNG, mobile-friendly PNG (`IMG/CEL`), or WhatsApp text (`TXT/WPP`).
 
-The WhatsApp text export is compact and grouped by album order. It starts with a short title marker, for example `🏆 Copa 2026`, followed by the selected list category.
+The report preview and all export formats use a compact grouped layout by album order. Each section lists only the sticker numbers needed for the selected filter, and duplicate reports include quantities such as `7 (x2)`. The WhatsApp text starts with a short title marker, for example `🏆 Copa 2026`, followed by the selected list category.
 
 ## Privacy
 

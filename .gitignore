@@ -27,9 +27,12 @@ album-copa-2026-*.png
 album-copa-2026-*.txt
 
 # Optional local/custom brand image
+public/brand/sidebar-mark.*
 public/brand/custom-mark.*
+public/brand/sidebar-feature-art.*
 public/brand/sidebar-art.*
 public/brand/dashboard-side-art.*
+public/brand/dashboard-lower-art.*
 
 # Editor directories and files
 .vscode/*

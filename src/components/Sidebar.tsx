@@ -32,7 +32,11 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <BrandMark className="brand-emblem" alt="Álbum Copa 2026 Local" />
+        <BrandMark
+          className="brand-emblem"
+          alt="Álbum Copa 2026 Local"
+          sources={['/brand/sidebar-mark.png', '/brand/custom-mark.png', '/brand/app-mark.svg']}
+        />
         <div>
           <p className="eyebrow">Tracker local</p>
           <h1>Álbum Copa 2026</h1>
@@ -62,6 +66,10 @@ export function Sidebar({
       </button>
 
       <div className="sidebar-art-slot" aria-hidden="true">
+        <OptionalLocalImage
+          sources={['/brand/sidebar-feature-art.png', '/brand/dashboard-side-art.png']}
+          className="sidebar-feature-art"
+        />
         <OptionalLocalImage src="/brand/sidebar-art.png" className="sidebar-art" />
       </div>
 

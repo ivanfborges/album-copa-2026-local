@@ -4,6 +4,7 @@ export type CollectionStats = {
   ownedUnique: number
   repeatedUnique: number
   repeatedTotal: number
+  totalObtained: number
   missing: number
   completion: number
 }
@@ -15,6 +16,7 @@ export function getCollectionStats(inventory: InventoryItem[], totalStickers: nu
     (total, item) => total + Math.max(0, item.quantity - 1),
     0,
   )
+  const totalObtained = ownedUnique + repeatedTotal
   const missing = Math.max(0, totalStickers - ownedUnique)
   const completion = totalStickers > 0 ? Math.round((ownedUnique / totalStickers) * 100) : 0
 
@@ -22,6 +24,7 @@ export function getCollectionStats(inventory: InventoryItem[], totalStickers: nu
     ownedUnique,
     repeatedUnique,
     repeatedTotal,
+    totalObtained,
     missing,
     completion,
   }

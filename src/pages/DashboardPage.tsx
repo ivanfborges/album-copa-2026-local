@@ -45,7 +45,18 @@ export function DashboardPage({
   onApplyPackEntry,
 }: DashboardPageProps) {
   const [isTeamStatsExpanded, setIsTeamStatsExpanded] = useState(false)
+  const emptyTeams = teamProgressStats.filter((item) => item.completion === 0).length
+  const startedTeams = teamProgressStats.filter(
+    (item) => item.completion > 0 && item.completion <= 50,
+  ).length
+  const almostCompleteTeams = teamProgressStats.filter(
+    (item) => item.completion > 50 && item.completion < 100,
+  ).length
   const completedTeams = teamProgressStats.filter((item) => item.completion === 100).length
+  const getCompactTeamName = (code: string, name: string) =>
+    code === 'BIH' ? 'Bosnia' : name
+  const formatTeamCount = (count: number, singular: string, plural: string) =>
+    `${count} ${count === 1 ? singular : plural}`
 
   return (
     <section className="page-band dashboard-layout">
@@ -67,7 +78,7 @@ export function DashboardPage({
 
         <div className="stats-grid">
           <article className="stat-card accent-green">
-            <span>Total</span>
+            <span>Total do álbum</span>
             <strong>{albumSummary.totalStickers}</strong>
           </article>
           <article className="stat-card accent-blue">
@@ -81,6 +92,10 @@ export function DashboardPage({
           <article className="stat-card accent-amber">
             <span>Repetidas</span>
             <strong>{stats.repeatedTotal}</strong>
+          </article>
+          <article className="stat-card accent-cyan">
+            <span>Total obtidas</span>
+            <strong>{stats.totalObtained}</strong>
           </article>
         </div>
 
@@ -172,7 +187,12 @@ export function DashboardPage({
               <span>Progresso separado por grupo e seleção</span>
             </div>
             <span className="section-progress-meta">
-              <span>{completedTeams} completas</span>
+              <span className="section-progress-badges">
+                <span>{formatTeamCount(emptyTeams, 'vazia', 'vazias')}</span>
+                <span>{formatTeamCount(startedTeams, 'iniciada', 'iniciadas')}</span>
+                <span>{formatTeamCount(almostCompleteTeams, 'quase completa', 'quase completas')}</span>
+                <span>{formatTeamCount(completedTeams, 'completa', 'completas')}</span>
+              </span>
               <ChevronDown size={18} aria-hidden="true" />
             </span>
           </button>
@@ -180,15 +200,12 @@ export function DashboardPage({
             <div id="team-progress-grid" className="team-progress-grid">
               {teamProgressStats.map((section) => (
                 <article key={section.code} className="team-progress-card">
-                  <div>
+                  <div className="team-progress-info">
                     <FlagIcon sectionCode={section.code} label={section.name} className="team-flag" />
                     <span className="team-code">{section.code}</span>
-                    <strong>{section.name}</strong>
+                    <strong>{getCompactTeamName(section.code, section.name)}</strong>
+                    <small>{section.owned}/{section.total}</small>
                   </div>
-                  <small>
-                    {section.group ? `Grupo ${section.group} - ` : ''}
-                    {section.owned}/{section.total}
-                  </small>
                   <div className="mini-progress" aria-hidden="true">
                     <span style={{ width: `${section.completion}%` }} />
                   </div>
@@ -216,7 +233,7 @@ export function DashboardPage({
           <strong>Álbum Copa 2026 Local</strong>
           <span>Controle pessoal, offline-first e sem backend.</span>
         </section>
-        <OptionalLocalImage src="/brand/dashboard-side-art.png" className="dashboard-side-art" />
+        <OptionalLocalImage src="/brand/dashboard-lower-art.png" className="dashboard-lower-art" />
       </aside>
     </section>
   )

@@ -93,11 +93,13 @@ O filtro de especiais é aditivo, então pode ser combinado com faltantes, tenho
 
 Formatos:
 
-- CSV: planilhas.
-- PDF: relatório paginado.
-- PNG: imagem compartilhável.
+- CSV: planilha compacta agrupada por seção do álbum.
+- PDF: relatório paginado compacto agrupado por seção do álbum.
+- PNG: imagem compartilhável compacta.
 - PNG celular (`IMG/CEL`): imagem vertical e compacta otimizada para consulta no celular durante trocas.
 - Texto WhatsApp (`TXT/WPP`): texto compacto agrupado na ordem do álbum para compartilhar faltantes ou repetidas em conversas. Ele começa com um título com troféu e um marcador de categoria.
+
+A prévia da tela de relatórios usa a mesma estrutura agrupada das exportações, mantendo a conferência visual próxima do arquivo que será compartilhado.
 
 ## Privacidade E Segurança
 

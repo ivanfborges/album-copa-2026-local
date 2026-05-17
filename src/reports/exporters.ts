@@ -4,7 +4,7 @@ import type { ReportRow, ReportSummary } from './reportData'
 export type ReportExportFormat = 'csv' | 'pdf' | 'png' | 'mobilePng' | 'whatsappText'
 export type WhatsappTextExportResult = 'copied' | 'downloaded'
 
-type CompactReportGroup = {
+export type CompactReportGroup = {
   sectionCode: string
   sectionName: string
   group: string
@@ -51,20 +51,30 @@ function formatGeneratedAt(value: string) {
   }).format(new Date(value))
 }
 
-function compactCount(summary: ReportSummary) {
-  if (summary.filterLabel === 'Repetidas') {
+export function getCompactReportCount(summary: ReportSummary) {
+  const label = summary.filterLabel.toLowerCase()
+
+  if (label.includes('repetida')) {
     return summary.repeatedTotal
   }
 
-  if (summary.filterLabel === 'Faltantes') {
+  if (label.includes('faltante')) {
     return summary.missingRows
+  }
+
+  if (label.includes('tenho')) {
+    return summary.ownedRows
   }
 
   return summary.totalRows
 }
 
-function compactTitle(summary: ReportSummary) {
+export function buildCompactReportTitle(summary: ReportSummary) {
   return `Figurinhas ${summary.filterLabel}`.toUpperCase()
+}
+
+export function buildCompactCategoryLine(summary: ReportSummary) {
+  return `${buildCompactReportTitle(summary)} (${getCompactReportCount(summary)})`
 }
 
 function stickerNumber(row: ReportRow) {
@@ -106,7 +116,7 @@ export function buildCompactReportGroups(
 
 export function buildWhatsappReportText(rows: readonly ReportRow[], summary: ReportSummary) {
   const groups = buildCompactReportGroups(rows, summary)
-  const lines = ['🏆 Copa 2026', `📦 ${compactTitle(summary)} (${compactCount(summary)})`, '']
+  const lines = ['🏆 Copa 2026', `📦 ${buildCompactCategoryLine(summary)}`, '']
 
   if (groups.length === 0) {
     lines.push('Nenhuma figurinha encontrada para esse filtro.')
@@ -175,27 +185,10 @@ function drawRoundRect(
 }
 
 export function exportReportCsv(rows: readonly ReportRow[], summary: ReportSummary) {
-  const headers = [
-    'codigo',
-    'secao',
-    'grupo',
-    'nome',
-    'tipo',
-    'quantidade',
-    'status',
-    'especial',
-  ]
-  const lines = rows.map((row) =>
-    [
-      row.code,
-      row.sectionName,
-      row.group ? `Grupo ${row.group}` : '',
-      row.title,
-      row.type,
-      row.quantity,
-      row.status,
-      row.isSpecial ? 'sim' : 'nao',
-    ]
+  const groups = buildCompactReportGroups(rows, summary)
+  const headers = ['secao', 'selecao', 'figurinhas', 'total']
+  const lines = groups.map((group) =>
+    [group.sectionCode, group.sectionName, group.items.join(', '), group.items.length]
       .map(csvCell)
       .join(';'),
   )
@@ -208,12 +201,12 @@ export function exportReportCsv(rows: readonly ReportRow[], summary: ReportSumma
 }
 
 export async function exportReportPdf(rows: readonly ReportRow[], summary: ReportSummary) {
+  const groups = buildCompactReportGroups(rows, summary)
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 14
-  const rowHeight = 7
   const footerY = pageHeight - 8
   let y = 16
 
@@ -234,21 +227,8 @@ export async function exportReportPdf(rows: readonly ReportRow[], summary: Repor
     doc.setFontSize(8)
     doc.setTextColor(102, 112, 133)
     doc.text(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, margin, footerY)
-    doc.text(`${summary.totalRows} linhas`, pageWidth - margin, footerY, { align: 'right' })
+    doc.text(`${groups.length} secoes`, pageWidth - margin, footerY, { align: 'right' })
     doc.setTextColor(17, 24, 39)
-  }
-
-  function addTableHeader() {
-    doc.setFillColor(244, 246, 248)
-    doc.rect(margin, y - 4.5, pageWidth - margin * 2, 7, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text('Codigo', margin + 1, y)
-    doc.text('Secao', 36, y)
-    doc.text('Nome', 70, y)
-    doc.text('Qtd', 160, y)
-    doc.text('Status', 174, y)
-    y += 7
   }
 
   function addNewPage() {
@@ -256,19 +236,21 @@ export async function exportReportPdf(rows: readonly ReportRow[], summary: Repor
     doc.addPage()
     addHeader(doc.getNumberOfPages())
     y = 20
-    addTableHeader()
   }
 
   addHeader(1)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(17)
-  doc.text(summary.title, margin, y)
+  doc.text('Copa 2026', margin, y)
   y += 9
+  doc.setFontSize(12)
+  doc.text(buildCompactCategoryLine(summary), margin, y)
+  y += 7
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(102, 112, 133)
-  doc.text(`Conteudo: ${summary.filterLabel}`, margin, y)
-  doc.text(`Secao: ${summary.sectionLabel}`, 78, y)
+  doc.text(`Secao: ${summary.sectionLabel}`, margin, y)
+  doc.text(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, 78, y)
   y += 6
   doc.text(
     `Linhas: ${summary.totalRows} | Tenho: ${summary.ownedRows} | Faltantes: ${summary.missingRows} | Repetidas: ${summary.repeatedTotal}`,
@@ -276,52 +258,74 @@ export async function exportReportPdf(rows: readonly ReportRow[], summary: Repor
     y,
   )
   doc.setTextColor(17, 24, 39)
-  y += 11
-  addTableHeader()
+  y += 10
 
-  rows.forEach((row, index) => {
-    if (y > pageHeight - 18) {
+  if (groups.length === 0) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.text('Nenhuma figurinha encontrada para esse filtro.', margin, y)
+  }
+
+  groups.forEach((group, index) => {
+    const line = `${group.sectionCode}: ${group.items.join(', ')}`
+    const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2 - 4)
+    const rowHeight = Math.max(9, wrapped.length * 5 + 4)
+
+    if (y + rowHeight > pageHeight - 18) {
       addNewPage()
     }
 
     if (index % 2 === 0) {
-      doc.setFillColor(250, 251, 252)
-      doc.rect(margin, y - 4.8, pageWidth - margin * 2, rowHeight, 'F')
+      doc.setFillColor(244, 246, 248)
+      doc.rect(margin, y - 4, pageWidth - margin * 2, rowHeight, 'F')
     }
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
     doc.setTextColor(17, 24, 39)
-    doc.text(row.code, margin + 1, y)
-    doc.text(row.sectionCode, 36, y)
-    doc.text(doc.splitTextToSize(row.title, 84)[0], 70, y)
-    doc.text(String(row.quantity), 163, y, { align: 'right' })
-    doc.text(row.status, 174, y)
-    y += rowHeight
+    doc.text(wrapped, margin + 2, y)
+    y += rowHeight + 2
   })
 
   addFooter()
   doc.save(`${reportBaseName(summary)}.pdf`)
 }
 
-function fitText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  if (context.measureText(text).width <= maxWidth) {
-    return text
-  }
-
-  let clipped = text
-  while (clipped.length > 0 && context.measureText(`${clipped}...`).width > maxWidth) {
-    clipped = clipped.slice(0, -1)
-  }
-
-  return `${clipped}...`
-}
-
 export function exportReportPng(rows: readonly ReportRow[], summary: ReportSummary) {
+  const groups = buildCompactReportGroups(rows, summary)
   const width = 1400
-  const headerHeight = 212
-  const rowHeight = 28
-  const height = Math.max(520, headerHeight + rows.length * rowHeight + 44)
+  const padding = 44
+  const contentWidth = width - padding * 2
+  const headerHeight = 190
+  const groupGap = 10
+  const itemLineHeight = 30
+  const measureCanvas = document.createElement('canvas')
+  const measureContext = measureCanvas.getContext('2d')
+
+  if (!measureContext) {
+    throw new Error('Canvas indisponivel para exportar PNG.')
+  }
+
+  measureContext.font = '700 22px Arial'
+
+  const measuredGroups = groups.map((group) => {
+    const itemLines = wrapCompactItems(measureContext, group.sectionCode, group.items, contentWidth - 36)
+    const height = 24 + itemLines.length * itemLineHeight
+
+    return {
+      ...group,
+      itemLines,
+      height,
+    }
+  })
+  const emptyHeight = groups.length === 0 ? 120 : 0
+  const height = Math.max(
+    520,
+    headerHeight +
+      measuredGroups.reduce((total, group) => total + group.height + groupGap, 0) +
+      emptyHeight +
+      padding,
+  )
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
 
@@ -335,13 +339,13 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
   context.fillStyle = '#f4f6f8'
   context.fillRect(0, 0, width, height)
   context.fillStyle = '#235347'
-  context.fillRect(0, 0, width, 72)
+  context.fillRect(0, 0, width, 82)
   context.fillStyle = '#ffffff'
   context.font = '700 34px Arial'
-  context.fillText(summary.title, 44, 46)
+  context.fillText('Copa 2026', padding, 48)
   context.font = '400 18px Arial'
-  context.fillText(`${summary.filterLabel} - ${summary.sectionLabel}`, 44, 102)
-  context.fillText(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, 44, 132)
+  context.fillText(buildCompactCategoryLine(summary), padding, 112)
+  context.fillText(`${summary.sectionLabel} - Gerado em ${formatGeneratedAt(summary.generatedAt)}`, padding, 140)
 
   const stats = [
     ['Linhas', summary.totalRows],
@@ -351,39 +355,40 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
   ]
 
   stats.forEach(([label, value], index) => {
-    const x = 44 + index * 180
+    const x = padding + index * 180
     context.fillStyle = '#ffffff'
-    context.fillRect(x, 150, 150, 44)
+    context.fillRect(x, 158, 150, 40)
     context.fillStyle = '#667085'
     context.font = '700 12px Arial'
-    context.fillText(String(label).toUpperCase(), x + 12, 168)
+    context.fillText(String(label).toUpperCase(), x + 12, 174)
     context.fillStyle = '#111827'
     context.font = '700 18px Arial'
-    context.fillText(String(value), x + 12, 188)
+    context.fillText(String(value), x + 12, 194)
   })
 
   let y = headerHeight
-  context.fillStyle = '#111827'
-  context.font = '700 14px Arial'
-  context.fillText('Codigo', 44, y)
-  context.fillText('Secao', 150, y)
-  context.fillText('Nome', 300, y)
-  context.fillText('Qtd', 1090, y)
-  context.fillText('Status', 1170, y)
-  y += 12
 
-  rows.forEach((row, index) => {
-    context.fillStyle = index % 2 === 0 ? '#ffffff' : '#f9fafb'
-    context.fillRect(32, y - 14, width - 64, rowHeight)
+  if (measuredGroups.length === 0) {
     context.fillStyle = '#111827'
-    context.font = '700 14px Arial'
-    context.fillText(row.code, 44, y + 5)
-    context.font = '400 14px Arial'
-    context.fillText(`${row.sectionCode}${row.group ? ` - Grupo ${row.group}` : ''}`, 150, y + 5)
-    context.fillText(fitText(context, row.title, 740), 300, y + 5)
-    context.fillText(String(row.quantity), 1090, y + 5)
-    context.fillText(row.status, 1170, y + 5)
-    y += rowHeight
+    context.font = '700 22px Arial'
+    context.fillText('Nenhuma figurinha encontrada para esse filtro.', padding, y)
+  }
+
+  measuredGroups.forEach((group, index) => {
+    drawRoundRect(context, padding, y, contentWidth, group.height, 12)
+    context.fillStyle = index % 2 === 0 ? '#ffffff' : '#f9fafb'
+    context.fill()
+    context.strokeStyle = '#d7e0e6'
+    context.lineWidth = 1
+    context.stroke()
+
+    context.fillStyle = '#111827'
+    context.font = '700 22px Arial'
+    group.itemLines.forEach((line, lineIndex) => {
+      context.fillText(line, padding + 18, y + 30 + lineIndex * itemLineHeight)
+    })
+
+    y += group.height + groupGap
   })
 
   const url = canvas.toDataURL('image/png')
@@ -400,11 +405,10 @@ export function exportReportMobilePng(rows: readonly ReportRow[], summary: Repor
   const width = 1080
   const padding = 48
   const contentWidth = width - padding * 2
-  const headerHeight = 250
-  const groupGap = 20
-  const cardPadding = 26
-  const sectionLineHeight = 34
-  const itemLineHeight = 38
+  const headerHeight = 220
+  const groupGap = 14
+  const cardPadding = 24
+  const itemLineHeight = 36
   const footerHeight = 52
   const measureCanvas = document.createElement('canvas')
   const measureContext = measureCanvas.getContext('2d')
@@ -422,7 +426,7 @@ export function exportReportMobilePng(rows: readonly ReportRow[], summary: Repor
       group.items,
       contentWidth - cardPadding * 2,
     )
-    const height = cardPadding * 2 + sectionLineHeight + itemLines.length * itemLineHeight
+    const height = cardPadding * 2 + itemLines.length * itemLineHeight
 
     return {
       ...group,
@@ -460,14 +464,14 @@ export function exportReportMobilePng(rows: readonly ReportRow[], summary: Repor
   context.font = '800 46px Arial'
   context.fillText('Copa 2026', padding, 70)
   context.font = '800 34px Arial'
-  context.fillText(compactTitle(summary), padding, 128)
+  context.fillText(buildCompactCategoryLine(summary), padding, 128)
 
   context.fillStyle = '#34d399'
   context.fillRect(padding, 150, 210, 6)
 
   context.fillStyle = '#d7dde8'
   context.font = '600 22px Arial'
-  context.fillText(`${compactCount(summary)} item(ns)`, padding, 190)
+  context.fillText(`${groups.length} secao(oes)`, padding, 190)
   context.fillStyle = '#9aa5b5'
   context.font = '400 20px Arial'
   context.fillText(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, padding + 170, 190)
@@ -489,19 +493,11 @@ export function exportReportMobilePng(rows: readonly ReportRow[], summary: Repor
     context.lineWidth = 2
     context.stroke()
 
-    const titleY = y + cardPadding
-    context.fillStyle = '#34d399'
-    context.font = '800 26px Arial'
-    context.fillText(group.sectionCode, padding + cardPadding, titleY)
-
-    context.fillStyle = '#f8fafc'
-    context.font = '800 26px Arial'
-    context.fillText(group.sectionName, padding + cardPadding + 92, titleY)
-
+    const titleY = y + cardPadding + 6
     context.fillStyle = '#d7dde8'
     context.font = '700 30px Arial'
     group.itemLines.forEach((line, index) => {
-      context.fillText(line, padding + cardPadding, titleY + 40 + index * itemLineHeight)
+      context.fillText(line, padding + cardPadding, titleY + index * itemLineHeight)
     })
 
     y += group.height + groupGap

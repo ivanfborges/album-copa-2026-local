@@ -62,7 +62,7 @@ function App() {
   const [reportSectionCode, setReportSectionCode] = useState<ReportSectionOption>('all')
   const [backupMode, setBackupMode] = useState<BackupMode>('replace')
   const [statusMessage, setStatusMessage] = useState('Carregando dados locais...')
-  const [backupMessage, setBackupMessage] = useState('Nenhum backup recuperado nesta sessao.')
+  const [backupMessage, setBackupMessage] = useState('Nenhum backup recuperado nesta sessão')
   const [reportExportMessage, setReportExportMessage] = useState('')
   const [reportExportingFormat, setReportExportingFormat] = useState<ReportExportFormat | null>(null)
   const [isReady, setIsReady] = useState(false)

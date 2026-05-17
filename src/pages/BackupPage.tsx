@@ -26,7 +26,7 @@ export function BackupPage({
       <div className="page-header">
         <div>
           <p className="eyebrow">Dados locais</p>
-          <h2>Backup e recuperacao</h2>
+          <h2>Backup e recuperação</h2>
         </div>
         <DatabaseBackup size={22} aria-hidden="true" />
       </div>
@@ -37,7 +37,7 @@ export function BackupPage({
           Exportar backup JSON
         </button>
 
-        <div className="segmented-control" aria-label="Modo de recuperacao">
+        <div className="segmented-control" aria-label="Modo de recuperação">
           <button
             type="button"
             className={backupMode === 'replace' ? 'active' : ''}
@@ -79,11 +79,11 @@ export function BackupPage({
           <strong>{savedStickerCount}</strong>
         </article>
         <article className="backup-summary-card">
-          <span>Ultimo salvamento</span>
+          <span>Último salvamento</span>
           <strong>{formatDateTime(settings.lastSavedAt)}</strong>
         </article>
         <article className="backup-summary-card">
-          <span>Ultima abertura</span>
+          <span>Última abertura</span>
           <strong>{formatDateTime(settings.lastOpenedAt)}</strong>
         </article>
       </section>

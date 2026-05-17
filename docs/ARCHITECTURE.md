@@ -93,11 +93,13 @@ The special-sticker filter is additive, so it can be combined with missing, owne
 
 Formats:
 
-- CSV: spreadsheet-friendly export.
-- PDF: paginated report.
-- PNG: shareable image.
+- CSV: compact spreadsheet-friendly export grouped by album section.
+- PDF: compact paginated report grouped by album section.
+- PNG: compact shareable image.
 - Mobile PNG: vertical, compact image optimized for phone viewing during trades.
 - WhatsApp text: compact grouped text for sharing missing or duplicate lists in chat. It is ordered by album section and starts with a trophy title plus a category marker.
+
+The reports screen preview uses the same grouped structure as the exports, keeping the visual check close to the files the user will share.
 
 ## Privacy And Security
 
