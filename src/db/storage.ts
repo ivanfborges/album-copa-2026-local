@@ -121,6 +121,49 @@ export async function saveStickerQuantity(stickerId: string, quantity: number) {
   return savedAt
 }
 
+export async function removeExtraDuplicates() {
+  const currentInventory = await getInventory()
+  const duplicateItems = currentInventory.filter(
+    (item) => validStickerIds.has(item.stickerId) && item.quantity > 1,
+  )
+
+  if (duplicateItems.length === 0) {
+    return {
+      lastSavedAt: undefined,
+      removedTotal: 0,
+      updatedItems: 0,
+    }
+  }
+
+  const savedAt = now()
+  const trimmedItems = duplicateItems.map((item) => ({
+    ...item,
+    quantity: 1,
+    updatedAt: savedAt,
+  }))
+  const removedTotal = duplicateItems.reduce((total, item) => total + item.quantity - 1, 0)
+
+  await db.transaction('rw', db.inventory, db.meta, async () => {
+    await db.inventory.bulkPut(trimmedItems)
+
+    const currentSettings = await getSettings()
+    await db.meta.put({
+      key: SETTINGS_KEY,
+      value: {
+        ...currentSettings,
+        lastSavedAt: savedAt,
+      },
+      updatedAt: savedAt,
+    })
+  })
+
+  return {
+    lastSavedAt: savedAt,
+    removedTotal,
+    updatedItems: trimmedItems.length,
+  }
+}
+
 export async function buildBackupPayload(): Promise<BackupPayload> {
   const [settings, inventory] = await Promise.all([getSettings(), getInventory()])
 

@@ -4,7 +4,7 @@
 
 A local-first web app for managing a personal World Cup 2026 sticker album collection from the desktop.
 
-The app runs in the browser, saves progress automatically with IndexedDB, and exports portable JSON backups plus CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text reports.
+The app runs in the browser, saves progress automatically with IndexedDB, and exports portable JSON backups plus CSV, PDF, PNG, mobile-friendly PNG, printable A4 checklists, and WhatsApp text reports.
 
 ## Features
 
@@ -14,12 +14,13 @@ The app runs in the browser, saves progress automatically with IndexedDB, and ex
 - Automatic duplicate detection.
 - Filters for all, missing, owned, duplicates, and special stickers.
 - Search by sticker code, name, or team.
-- Fast entry for adding or removing pasted sticker codes.
-- Pack mode for registering exactly 7 stickers.
+- Fast entry for adding or removing pasted sticker codes, with a preview of new versus duplicate stickers.
+- Bulk duplicate cleanup that removes extra quantities while keeping one copy of each sticker.
+- Pack mode for registering exactly 7 stickers, with a preview of new versus duplicate stickers.
 - Overall and per-team statistics.
 - Team flags rendered as SVG icons.
 - JSON backup with replace or merge restore modes.
-- Compact CSV, PDF, PNG, mobile-friendly PNG, and WhatsApp text report exports grouped by album order.
+- Compact CSV, PDF, PNG, mobile-friendly PNG, printable A4 checklist, and WhatsApp text report exports grouped by album order.
 - Special-sticker reports can be combined with missing, owned, duplicate, or full lists.
 - Light/dark theme.
 
@@ -136,9 +137,11 @@ On the **Reports** screen, choose:
 
 - content: all, missing, owned, duplicates, with an optional special-sticker filter;
 - section: all sections or one specific team/section;
-- format: CSV, PDF, PNG, mobile-friendly PNG (`IMG/CEL`), or WhatsApp text (`TXT/WPP`).
+- format: CSV, PDF, PNG, mobile-friendly PNG (`IMG/CEL`), printable A4 checklist (`A4`), or WhatsApp text (`TXT/WPP`).
 
 The report preview and all export formats use a compact grouped layout by album order. Each section lists only the sticker numbers needed for the selected filter, and duplicate reports include quantities such as `7 (x2)`. The WhatsApp text starts with a short title marker, for example `🏆 Copa 2026`, followed by the selected list category.
+
+The PDF, PNG, and A4 exports share a portrait checklist layout for printing or quick visual checking, with one line per album section/team and one markable box per selected sticker.
 
 ## Privacy
 

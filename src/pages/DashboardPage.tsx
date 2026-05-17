@@ -6,7 +6,7 @@ import { BrandMark } from '../components/BrandMark'
 import { OptionalLocalImage } from '../components/OptionalLocalImage'
 import { formatDateTime } from '../app/catalog'
 import type { AlbumSettings, TeamProgressStats } from '../types'
-import type { ParsedStickerCodes } from '../domain/quickEntry'
+import type { ParsedStickerCodes, StickerCodeImpact } from '../domain/quickEntry'
 import type { CollectionStats } from '../domain/stats'
 
 type DashboardPageProps = {
@@ -15,7 +15,9 @@ type DashboardPageProps = {
   quickEntryText: string
   packEntryText: string
   quickEntryPreview: ParsedStickerCodes
+  quickEntryImpact: StickerCodeImpact
   packEntryPreview: ParsedStickerCodes
+  packEntryImpact: StickerCodeImpact
   teamProgressStats: TeamProgressStats[]
   onBackupNavigate: () => void
   onExportBackup: () => void
@@ -24,6 +26,7 @@ type DashboardPageProps = {
   onPackEntryTextChange: (value: string) => void
   onApplyQuickEntry: () => void
   onRemoveQuickEntry: () => void
+  onRemoveExtraDuplicates: () => void
   onApplyPackEntry: () => void
 }
 
@@ -33,7 +36,9 @@ export function DashboardPage({
   quickEntryText,
   packEntryText,
   quickEntryPreview,
+  quickEntryImpact,
   packEntryPreview,
+  packEntryImpact,
   teamProgressStats,
   onBackupNavigate,
   onExportBackup,
@@ -42,6 +47,7 @@ export function DashboardPage({
   onPackEntryTextChange,
   onApplyQuickEntry,
   onRemoveQuickEntry,
+  onRemoveExtraDuplicates,
   onApplyPackEntry,
 }: DashboardPageProps) {
   const [isTeamStatsExpanded, setIsTeamStatsExpanded] = useState(false)
@@ -111,12 +117,21 @@ export function DashboardPage({
 
         <section className="quick-tools-grid">
           <article className="tool-panel quick-entry-card">
-            <div className="quick-entry-header">
+            <div className="quick-entry-header quick-entry-header-with-action">
               <ClipboardList size={20} aria-hidden="true" />
               <div>
                 <strong>Entrada rápida</strong>
                 <span>Cole códigos como BRA1, ARG 10 ou FWC3</span>
               </div>
+              <button
+                type="button"
+                className="warning-action compact-action remove-all-duplicates-action"
+                onClick={onRemoveExtraDuplicates}
+                disabled={stats.repeatedTotal === 0}
+                title="Remover todas as quantidades extras e manter uma unidade de cada figurinha"
+              >
+                Remover todas repetidas
+              </button>
             </div>
             <textarea
               value={quickEntryText}
@@ -125,12 +140,14 @@ export function DashboardPage({
               onChange={(event) => onQuickEntryTextChange(event.target.value)}
             />
             <div className="quick-entry-footer">
-              <span>
-                {quickEntryPreview.totalValid} valida(s)
-                {quickEntryPreview.invalidCodes.length > 0
-                  ? ` - ${quickEntryPreview.invalidCodes.length} ignorada(s)`
-                  : ''}
-              </span>
+              <div className="entry-summary">
+                <span>{quickEntryPreview.totalValid} válida(s)</span>
+                <span>{quickEntryImpact.newCount} nova(s)</span>
+                <span>{quickEntryImpact.repeatedCount} repetida(s)</span>
+                {quickEntryPreview.invalidCodes.length > 0 ? (
+                  <span>{quickEntryPreview.invalidCodes.length} ignorada(s)</span>
+                ) : null}
+              </div>
               <div className="quick-entry-actions">
                 <button type="button" className="danger-action compact-action" onClick={onRemoveQuickEntry}>
                   Remover
@@ -160,7 +177,11 @@ export function DashboardPage({
               <span style={{ width: `${Math.min(100, (packEntryPreview.totalValid / 7) * 100)}%` }} />
             </div>
             <div className="quick-entry-footer">
-              <span>{packEntryPreview.totalValid}/7 válidas</span>
+              <div className="pack-entry-summary">
+                <span>{packEntryPreview.totalValid}/7 válidas</span>
+                <span>{packEntryImpact.newCount} nova(s)</span>
+                <span>{packEntryImpact.repeatedCount} repetida(s)</span>
+              </div>
               <button type="button" className="primary-action compact-action" onClick={onApplyPackEntry}>
                 Salvar pacote
               </button>

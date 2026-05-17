@@ -52,7 +52,7 @@ A aplicação usa IndexedDB via Dexie. O banco local se chama `album-copa-2026` 
 - `inventory`: quantidades das figurinhas.
 - `meta`: preferências e datas, como apelido do álbum e último salvamento.
 
-Cada clique em `+`, `-`, entrada rápida, remoção rápida ou pacotinho salva automaticamente no navegador.
+Cada clique em `+`, `-`, entrada rápida, remoção rápida, pacotinho ou limpeza em massa de repetidas salva automaticamente no navegador. A entrada rápida e o pacotinho também calculam, antes de salvar, quantos códigos válidos são novos para o álbum e quantos viram repetidas.
 
 ## Backup
 
@@ -94,8 +94,9 @@ O filtro de especiais é aditivo, então pode ser combinado com faltantes, tenho
 Formatos:
 
 - CSV: planilha compacta agrupada por seção do álbum.
-- PDF: relatório paginado compacto agrupado por seção do álbum.
-- PNG: imagem compartilhável compacta.
+- PDF: checklist em retrato para impressão ou conferência rápida, com uma linha por seção/seleção e um quadradinho marcável por figurinha selecionada.
+- Checklist A4: PDF em retrato para impressão, usando o mesmo layout compacto da exportação PDF padrão.
+- PNG: imagem em retrato usando o mesmo layout visual compacto das exportações PDF/A4.
 - PNG celular (`IMG/CEL`): imagem vertical e compacta otimizada para consulta no celular durante trocas.
 - Texto WhatsApp (`TXT/WPP`): texto compacto agrupado na ordem do álbum para compartilhar faltantes ou repetidas em conversas. Ele começa com um título com troféu e um marcador de categoria.
 

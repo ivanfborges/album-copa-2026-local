@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseStickerCodes } from './quickEntry'
+import { getStickerCodeImpact, parseStickerCodes } from './quickEntry'
 import type { Sticker } from '../types'
 
 const stickers = [
@@ -24,5 +24,23 @@ describe('parseStickerCodes', () => {
     expect(parsed.totalValid).toBe(2)
     expect(parsed.counts.get('BRA1')).toBe(2)
     expect(parsed.invalidCodes).toEqual(['USA99'])
+  })
+})
+
+describe('getStickerCodeImpact', () => {
+  it('counts new and repeated stickers against current inventory', () => {
+    const parsed = parseStickerCodes('BRA1 ARG10 FWC3 BRA1', stickers)
+    const impact = getStickerCodeImpact(
+      parsed,
+      new Map([
+        ['ARG10', 1],
+        ['FWC3', 2],
+      ]),
+    )
+
+    expect(impact).toEqual({
+      newCount: 1,
+      repeatedCount: 3,
+    })
   })
 })

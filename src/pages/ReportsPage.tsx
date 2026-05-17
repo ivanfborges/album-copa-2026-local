@@ -1,4 +1,4 @@
-import { FileImage, FileSpreadsheet, FileText, MessageSquare, Smartphone } from 'lucide-react'
+import { FileImage, FileSpreadsheet, FileText, MessageSquare, Printer, Smartphone } from 'lucide-react'
 import { filterOptions, orderedStickerSections } from '../app/catalog'
 import { getFlagEmojiForSection } from '../data/flagEmojis'
 import { buildCompactCategoryLine, buildCompactReportGroups, type ReportExportFormat } from '../reports/exporters'
@@ -97,6 +97,15 @@ export function ReportsPage({
           >
             <MessageSquare size={18} aria-hidden="true" />
             {reportExportingFormat === 'whatsappText' ? 'Copiando...' : 'TXT/WPP'}
+          </button>
+          <button
+            type="button"
+            className={reportExportingFormat === 'a4Sheet' ? 'export-button active' : 'export-button'}
+            onClick={() => onExportReport('a4Sheet')}
+            disabled={reportRows.length === 0 || isExporting}
+          >
+            <Printer size={18} aria-hidden="true" />
+            {reportExportingFormat === 'a4Sheet' ? 'Gerando...' : 'A4'}
           </button>
         </div>
       </div>

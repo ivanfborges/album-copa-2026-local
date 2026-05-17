@@ -52,7 +52,7 @@ The app uses IndexedDB through Dexie. The local database is named `album-copa-20
 - `inventory`: sticker quantities.
 - `meta`: preferences and dates, such as album nickname and last saved timestamp.
 
-Every quantity change, quick add/remove action, or pack entry action is saved automatically in the browser.
+Every quantity change, quick add/remove action, pack entry action, or bulk duplicate cleanup is saved automatically in the browser. Quick entry and pack entry also calculate how many valid pasted codes are new to the album and how many will become duplicates before saving.
 
 ## Backup
 
@@ -94,8 +94,9 @@ The special-sticker filter is additive, so it can be combined with missing, owne
 Formats:
 
 - CSV: compact spreadsheet-friendly export grouped by album section.
-- PDF: compact paginated report grouped by album section.
-- PNG: compact shareable image.
+- PDF: portrait checklist report for printing or quick visual checking, with one line per section/team and one markable box per selected sticker.
+- A4 checklist: portrait PDF checklist for printing, using the same compact layout as the standard PDF export.
+- PNG: portrait checklist image using the same compact visual layout as the PDF/A4 exports.
 - Mobile PNG: vertical, compact image optimized for phone viewing during trades.
 - WhatsApp text: compact grouped text for sharing missing or duplicate lists in chat. It is ordered by album section and starts with a trophy title plus a category marker.
 

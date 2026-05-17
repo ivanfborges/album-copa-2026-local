@@ -14,12 +14,13 @@ import { groupBySectionCode } from './data/groups'
 import {
   buildBackupPayload,
   getInventory,
+  removeExtraDuplicates,
   restoreBackup,
   saveSettings,
   saveStickerQuantity,
   touchLastOpened,
 } from './db/storage'
-import { parseStickerCodes } from './domain/quickEntry'
+import { getStickerCodeImpact, parseStickerCodes } from './domain/quickEntry'
 import { getCollectionStats } from './domain/stats'
 import { AlbumPage } from './pages/AlbumPage'
 import { BackupPage } from './pages/BackupPage'
@@ -27,6 +28,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
 import {
   exportReportCsv,
+  exportReportA4SheetPdf,
   exportReportMobilePng,
   exportReportPdf,
   exportReportPng,
@@ -111,6 +113,10 @@ function App() {
   )
   const inventoryByStickerId = useMemo(
     () => new Map(catalogInventory.map((item) => [item.stickerId, item])),
+    [catalogInventory],
+  )
+  const inventoryQuantitiesByStickerId = useMemo(
+    () => new Map(catalogInventory.map((item) => [item.stickerId, item.quantity])),
     [catalogInventory],
   )
   const stats = useMemo(() => getCollectionStats(catalogInventory, stickers.length), [catalogInventory])
@@ -201,7 +207,15 @@ function App() {
     () => parseStickerCodes(quickEntryText, orderedStickers),
     [quickEntryText],
   )
+  const quickEntryImpact = useMemo(
+    () => getStickerCodeImpact(quickEntryPreview, inventoryQuantitiesByStickerId),
+    [inventoryQuantitiesByStickerId, quickEntryPreview],
+  )
   const packEntryPreview = useMemo(() => parseStickerCodes(packEntryText, orderedStickers), [packEntryText])
+  const packEntryImpact = useMemo(
+    () => getStickerCodeImpact(packEntryPreview, inventoryQuantitiesByStickerId),
+    [inventoryQuantitiesByStickerId, packEntryPreview],
+  )
 
   async function handleNicknameChange(value: string) {
     setSettings((current) => ({ ...current, albumNickname: value }))
@@ -300,6 +314,7 @@ function App() {
     }
 
     const inventoryMap = new Map(catalogInventory.map((item) => [item.stickerId, item.quantity]))
+    const entryImpact = getStickerCodeImpact(parsed, inventoryMap)
     const changedItems = [...parsed.counts.entries()].map(([stickerId, count]) => {
       const currentQuantity = inventoryMap.get(stickerId) ?? 0
 
@@ -337,9 +352,13 @@ function App() {
         ? ` ${parsed.invalidCodes.length} codigo(s) ignorado(s).`
         : ''
       const actionMessage = operation === 'remove' ? 'removida(s)' : 'adicionada(s)'
+      const entryImpactMessage =
+        operation === 'add'
+          ? ` ${entryImpact.newCount} nova(s), ${entryImpact.repeatedCount} repetida(s).`
+          : ''
 
       setSettings((current) => ({ ...current, lastSavedAt }))
-      setStatusMessage(`${parsed.totalValid} figurinha(s) ${actionMessage}.${invalidNote}`)
+      setStatusMessage(`${parsed.totalValid} figurinha(s) ${actionMessage}.${entryImpactMessage}${invalidNote}`)
 
       if (source === 'quick') {
         setQuickEntryText('')
@@ -354,6 +373,43 @@ function App() {
     }
   }
 
+  async function handleRemoveExtraDuplicates() {
+    if (stats.repeatedTotal === 0) {
+      setStatusMessage('Nenhuma repetida para remover.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      'Remover todas as quantidades extras das repetidas e manter uma unidade de cada figurinha?',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const result = await removeExtraDuplicates()
+      const storedInventory = await getInventory()
+
+      setInventory(storedInventory)
+
+      if (result.lastSavedAt) {
+        setSettings((current) => ({ ...current, lastSavedAt: result.lastSavedAt }))
+      }
+
+      setStatusMessage(
+        result.removedTotal > 0
+          ? `${result.removedTotal} repetida(s) removida(s). ${result.updatedItems} figurinha(s) mantida(s).`
+          : 'Nenhuma repetida para remover.',
+      )
+    } catch (error) {
+      console.error(error)
+      const storedInventory = await getInventory()
+      setInventory(storedInventory)
+      setStatusMessage('Nao foi possivel remover as repetidas.')
+    }
+  }
+
   async function handleExportReport(format: ReportExportFormat) {
     const formatLabel: Record<ReportExportFormat, string> = {
       csv: 'CSV',
@@ -361,6 +417,7 @@ function App() {
       png: 'PNG',
       mobilePng: 'imagem para celular',
       whatsappText: 'texto para WhatsApp',
+      a4Sheet: 'folha A4',
     }
 
     setReportExportingFormat(format)
@@ -373,6 +430,10 @@ function App() {
 
       if (format === 'pdf') {
         await exportReportPdf(reportRows, reportSummary)
+      }
+
+      if (format === 'a4Sheet') {
+        await exportReportA4SheetPdf(reportRows, reportSummary)
       }
 
       if (format === 'png') {
@@ -426,7 +487,9 @@ function App() {
             quickEntryText={quickEntryText}
             packEntryText={packEntryText}
             quickEntryPreview={quickEntryPreview}
+            quickEntryImpact={quickEntryImpact}
             packEntryPreview={packEntryPreview}
+            packEntryImpact={packEntryImpact}
             teamProgressStats={teamProgressStats}
             onBackupNavigate={() => setActivePage('backup')}
             onExportBackup={() => void handleExportBackup()}
@@ -435,6 +498,7 @@ function App() {
             onPackEntryTextChange={setPackEntryText}
             onApplyQuickEntry={() => void applyParsedCodes(quickEntryPreview, 'quick')}
             onRemoveQuickEntry={() => void applyParsedCodes(quickEntryPreview, 'quick', 'remove')}
+            onRemoveExtraDuplicates={() => void handleRemoveExtraDuplicates()}
             onApplyPackEntry={() => void applyParsedCodes(packEntryPreview, 'pack')}
           />
         )}

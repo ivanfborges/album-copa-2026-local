@@ -66,6 +66,7 @@
 .icon-button,
 .primary-action,
 .danger-action,
+.warning-action,
 .file-action,
 .segmented-control button,
 .report-options button {
@@ -269,7 +270,8 @@
 }
 
 .report-page-header .report-options {
-  max-width: 560px;
+  max-width: none;
+  flex-wrap: nowrap;
 }
 
 .report-heading {
@@ -302,6 +304,7 @@
 .icon-button:hover,
 .primary-action:hover,
 .danger-action:hover,
+.warning-action:hover,
 .file-action:hover,
 .segmented-control button:hover {
   border-color: var(--brand);
@@ -432,6 +435,19 @@
   gap: 12px;
 }
 
+.quick-entry-header-with-action {
+  align-items: center;
+}
+
+.quick-entry-header-with-action > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.remove-all-duplicates-action {
+  flex: 0 0 auto;
+}
+
 .quick-entry-header svg {
   color: var(--brand);
   margin-top: 2px;
@@ -500,6 +516,19 @@
   height: 100%;
   border-radius: inherit;
   background: var(--brand);
+}
+
+.entry-summary,
+.pack-entry-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.entry-summary span,
+.pack-entry-summary span {
+  white-space: nowrap;
 }
 
 .section-progress-panel {
@@ -1146,13 +1175,16 @@
 
 .report-options button {
   min-height: 34px;
+  padding-inline: 12px;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .report-options button,
 .segmented-control button,
 .primary-action,
 .danger-action,
+.warning-action,
 .file-action {
   min-height: 42px;
   border-radius: 8px;
@@ -1174,6 +1206,8 @@
 
 .report-options button {
   min-height: 34px;
+  padding-inline: 12px;
+  white-space: nowrap;
 }
 
 .export-button {
@@ -1390,6 +1424,36 @@
   border-color: color-mix(in srgb, var(--danger) 58%, var(--border));
 }
 
+.warning-action {
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface-raised));
+  color: color-mix(in srgb, var(--warning) 68%, var(--text-strong));
+  border-color: color-mix(in srgb, var(--warning) 36%, var(--border));
+  cursor: pointer;
+}
+
+.warning-action:hover {
+  background: color-mix(in srgb, var(--warning) 20%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--warning) 58%, var(--border));
+}
+
+.primary-action:disabled,
+.danger-action:disabled,
+.warning-action:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+  border-color: var(--border);
+}
+
+.danger-action:disabled:hover {
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface-raised));
+  border-color: var(--border);
+}
+
+.warning-action:disabled:hover {
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface-raised));
+  border-color: var(--border);
+}
+
 .segmented-control {
   min-height: 42px;
   display: inline-flex;
@@ -1500,6 +1564,10 @@
   }
 
   .report-options {
+    flex-wrap: wrap;
+  }
+
+  .report-page-header .report-options {
     flex-wrap: wrap;
   }
 
@@ -1619,6 +1687,7 @@
   .segmented-control button,
   .primary-action,
   .danger-action,
+  .warning-action,
   .file-action {
     flex: 1;
   }

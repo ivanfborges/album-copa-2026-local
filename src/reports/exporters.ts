@@ -1,7 +1,7 @@
 import { getFlagEmojiForSection } from '../data/flagEmojis'
 import type { ReportRow, ReportSummary } from './reportData'
 
-export type ReportExportFormat = 'csv' | 'pdf' | 'png' | 'mobilePng' | 'whatsappText'
+export type ReportExportFormat = 'csv' | 'pdf' | 'png' | 'mobilePng' | 'whatsappText' | 'a4Sheet'
 export type WhatsappTextExportResult = 'copied' | 'downloaded'
 
 export type CompactReportGroup = {
@@ -184,6 +184,49 @@ function drawRoundRect(
   context.closePath()
 }
 
+const a4SheetLayout = {
+  margin: 5.5,
+  labelWidth: 10.5,
+  labelGap: 1,
+  boxWidth: 7.2,
+  boxHeight: 4.2,
+  boxGap: 0.45,
+  chunkGap: 0.35,
+  rowGap: 0.45,
+  groupGap: 1.45,
+  headerY: 17,
+  footerBottom: 5,
+  pageBottom: 8,
+} as const
+
+function a4SheetMaxBoxesPerLine(pageWidth: number) {
+  return Math.max(
+    1,
+    Math.floor(
+      (pageWidth -
+        a4SheetLayout.margin * 2 -
+        a4SheetLayout.labelWidth -
+        a4SheetLayout.labelGap +
+        a4SheetLayout.boxGap) /
+        (a4SheetLayout.boxWidth + a4SheetLayout.boxGap),
+    ),
+  )
+}
+
+function compactGroupKey(group: CompactReportGroup) {
+  return group.group || group.sectionCode
+}
+
+function chunkCompactItems(items: readonly string[], size: number) {
+  const chunks: string[][] = []
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+
+  return chunks
+}
+
 export function exportReportCsv(rows: readonly ReportRow[], summary: ReportSummary) {
   const groups = buildCompactReportGroups(rows, summary)
   const headers = ['secao', 'selecao', 'figurinhas', 'total']
@@ -201,195 +244,408 @@ export function exportReportCsv(rows: readonly ReportRow[], summary: ReportSumma
 }
 
 export async function exportReportPdf(rows: readonly ReportRow[], summary: ReportSummary) {
+  await saveCompactSheetPdf(rows, summary, `${reportBaseName(summary)}.pdf`)
+}
+
+function printableStickerBoxLabel(item: string) {
+  return item.replace(/\s*\(x(\d+)\)/, ' x$1')
+}
+
+async function saveCompactSheetPdf(rows: readonly ReportRow[], summary: ReportSummary, filename: string) {
   const groups = buildCompactReportGroups(rows, summary)
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 14
-  const footerY = pageHeight - 8
-  let y = 16
+  const {
+    margin,
+    labelWidth,
+    labelGap,
+    boxWidth,
+    boxHeight,
+    boxGap,
+    chunkGap,
+    rowGap,
+    groupGap,
+    headerY,
+    footerBottom,
+    pageBottom,
+  } = a4SheetLayout
+  const footerY = pageHeight - footerBottom
+  const maxBoxesPerLine = a4SheetMaxBoxesPerLine(pageWidth)
+  let y = 10
+  let currentGroupKey = ''
 
   function addHeader(pageNumber: number) {
-    doc.setFillColor(35, 83, 71)
-    doc.rect(0, 0, pageWidth, 12, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.text('Album Copa 2026', margin, 8)
-    doc.setFontSize(8)
-    doc.text(`Pagina ${pageNumber}`, pageWidth - margin, 8, { align: 'right' })
     doc.setTextColor(17, 24, 39)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('Copa 2026 - Folha A4 de conferencia', margin, 8)
+    doc.setFontSize(6.6)
+    doc.setTextColor(102, 112, 133)
+    doc.text(buildCompactCategoryLine(summary), margin, 12)
+    doc.text(summary.sectionLabel, pageWidth - margin, 8, { align: 'right' })
+    doc.text(`Pagina ${pageNumber}`, pageWidth - margin, 12, { align: 'right' })
+    doc.setDrawColor(35, 83, 71)
+    doc.setLineWidth(0.25)
+    doc.line(margin, 14, pageWidth - margin, 14)
+    y = headerY
   }
 
   function addFooter() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
     doc.setTextColor(102, 112, 133)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(5.8)
     doc.text(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, margin, footerY)
-    doc.text(`${groups.length} secoes`, pageWidth - margin, footerY, { align: 'right' })
-    doc.setTextColor(17, 24, 39)
+    doc.text('Marque os quadradinhos com caneta durante as trocas.', pageWidth - margin, footerY, {
+      align: 'right',
+    })
   }
 
   function addNewPage() {
     addFooter()
     doc.addPage()
     addHeader(doc.getNumberOfPages())
-    y = 20
+    currentGroupKey = ''
+  }
+
+  function ensureSpace(height: number) {
+    if (y + height > pageHeight - pageBottom) {
+      addNewPage()
+    }
   }
 
   addHeader(1)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(17)
-  doc.text('Copa 2026', margin, y)
-  y += 9
-  doc.setFontSize(12)
-  doc.text(buildCompactCategoryLine(summary), margin, y)
-  y += 7
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(102, 112, 133)
-  doc.text(`Secao: ${summary.sectionLabel}`, margin, y)
-  doc.text(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, 78, y)
-  y += 6
-  doc.text(
-    `Linhas: ${summary.totalRows} | Tenho: ${summary.ownedRows} | Faltantes: ${summary.missingRows} | Repetidas: ${summary.repeatedTotal}`,
-    margin,
-    y,
-  )
-  doc.setTextColor(17, 24, 39)
-  y += 10
 
   if (groups.length === 0) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
+    doc.setTextColor(17, 24, 39)
     doc.text('Nenhuma figurinha encontrada para esse filtro.', margin, y)
+    addFooter()
+    doc.save(filename)
+    return
   }
 
-  groups.forEach((group, index) => {
-    const line = `${group.sectionCode}: ${group.items.join(', ')}`
-    const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2 - 4)
-    const rowHeight = Math.max(9, wrapped.length * 5 + 4)
+  groups.forEach((group) => {
+    const chunks = chunkCompactItems(group.items, maxBoxesPerLine)
+    const rowHeight = chunks.length * boxHeight + Math.max(0, chunks.length - 1) * chunkGap
+    const groupKey = compactGroupKey(group)
+    const needsGroupGap = Boolean(currentGroupKey && groupKey !== currentGroupKey)
+    const requiredHeight = rowHeight + rowGap + (needsGroupGap ? groupGap : 0)
 
-    if (y + rowHeight > pageHeight - 18) {
-      addNewPage()
+    ensureSpace(requiredHeight)
+
+    if (needsGroupGap) {
+      y += groupGap
     }
+    currentGroupKey = groupKey
 
-    if (index % 2 === 0) {
-      doc.setFillColor(244, 246, 248)
-      doc.rect(margin, y - 4, pageWidth - margin * 2, rowHeight, 'F')
-    }
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
+    doc.setFillColor(244, 246, 248)
+    doc.setDrawColor(209, 216, 226)
+    doc.rect(margin, y, labelWidth, boxHeight, 'FD')
     doc.setTextColor(17, 24, 39)
-    doc.text(wrapped, margin + 2, y)
-    y += rowHeight + 2
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(5.4)
+    doc.text(group.sectionCode, margin + labelWidth / 2, y + 2.85, { align: 'center' })
+
+    chunks.forEach((chunk, chunkIndex) => {
+      const chunkY = y + chunkIndex * (boxHeight + chunkGap)
+
+      if (chunkIndex > 0) {
+        doc.setDrawColor(209, 216, 226)
+        doc.rect(margin, chunkY, labelWidth, boxHeight)
+      }
+
+      chunk.forEach((item, itemIndex) => {
+        const x = margin + labelWidth + labelGap + itemIndex * (boxWidth + boxGap)
+
+        doc.setFillColor(255, 255, 255)
+        doc.setDrawColor(17, 24, 39)
+        doc.rect(x, chunkY, boxWidth, boxHeight, 'FD')
+        doc.setTextColor(17, 24, 39)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(4.2)
+        doc.text(printableStickerBoxLabel(item), x + boxWidth / 2, chunkY + 2.8, {
+          align: 'center',
+          maxWidth: boxWidth - 1,
+        })
+      })
+    })
+
+    y += rowHeight + rowGap
   })
 
   addFooter()
-  doc.save(`${reportBaseName(summary)}.pdf`)
+  doc.save(filename)
+}
+
+export async function exportReportA4SheetPdf(rows: readonly ReportRow[], summary: ReportSummary) {
+  await saveCompactSheetPdf(rows, summary, `${reportBaseName(summary)}-folha-a4.pdf`)
 }
 
 export function exportReportPng(rows: readonly ReportRow[], summary: ReportSummary) {
   const groups = buildCompactReportGroups(rows, summary)
-  const width = 1400
-  const padding = 44
-  const contentWidth = width - padding * 2
-  const headerHeight = 190
-  const groupGap = 10
-  const itemLineHeight = 30
-  const measureCanvas = document.createElement('canvas')
-  const measureContext = measureCanvas.getContext('2d')
+  const pageWidth = 210
+  const pageHeight = 297
+  const scale = 6
+  const pageGap = 5
+  const {
+    margin,
+    labelWidth,
+    labelGap,
+    boxWidth,
+    boxHeight,
+    boxGap,
+    chunkGap,
+    rowGap,
+    groupGap,
+    headerY,
+    footerBottom,
+    pageBottom,
+  } = a4SheetLayout
+  const maxBoxesPerLine = a4SheetMaxBoxesPerLine(pageWidth)
 
-  if (!measureContext) {
-    throw new Error('Canvas indisponivel para exportar PNG.')
+  function countPages() {
+    let pages = 1
+    let y = headerY
+    let currentGroupKey = ''
+
+    groups.forEach((group) => {
+      const chunks = chunkCompactItems(group.items, maxBoxesPerLine)
+      const rowHeight = chunks.length * boxHeight + Math.max(0, chunks.length - 1) * chunkGap
+      const groupKey = compactGroupKey(group)
+      const needsGroupGap = Boolean(currentGroupKey && groupKey !== currentGroupKey)
+      const requiredHeight = rowHeight + rowGap + (needsGroupGap ? groupGap : 0)
+
+      if (y + requiredHeight > pageHeight - pageBottom) {
+        pages += 1
+        y = headerY
+        currentGroupKey = ''
+      }
+
+      if (currentGroupKey && groupKey !== currentGroupKey) {
+        y += groupGap
+      }
+
+      currentGroupKey = groupKey
+      y += rowHeight + rowGap
+    })
+
+    return pages
   }
 
-  measureContext.font = '700 22px Arial'
-
-  const measuredGroups = groups.map((group) => {
-    const itemLines = wrapCompactItems(measureContext, group.sectionCode, group.items, contentWidth - 36)
-    const height = 24 + itemLines.length * itemLineHeight
-
-    return {
-      ...group,
-      itemLines,
-      height,
-    }
-  })
-  const emptyHeight = groups.length === 0 ? 120 : 0
-  const height = Math.max(
-    520,
-    headerHeight +
-      measuredGroups.reduce((total, group) => total + group.height + groupGap, 0) +
-      emptyHeight +
-      padding,
-  )
+  const pageCount = countPages()
   const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')
+  const context = canvas.getContext('2d') as CanvasRenderingContext2D
 
   if (!context) {
     throw new Error('Canvas indisponivel para exportar PNG.')
   }
 
-  canvas.width = width
-  canvas.height = height
-
-  context.fillStyle = '#f4f6f8'
-  context.fillRect(0, 0, width, height)
-  context.fillStyle = '#235347'
-  context.fillRect(0, 0, width, 82)
-  context.fillStyle = '#ffffff'
-  context.font = '700 34px Arial'
-  context.fillText('Copa 2026', padding, 48)
-  context.font = '400 18px Arial'
-  context.fillText(buildCompactCategoryLine(summary), padding, 112)
-  context.fillText(`${summary.sectionLabel} - Gerado em ${formatGeneratedAt(summary.generatedAt)}`, padding, 140)
-
-  const stats = [
-    ['Linhas', summary.totalRows],
-    ['Tenho', summary.ownedRows],
-    ['Faltantes', summary.missingRows],
-    ['Repetidas', summary.repeatedTotal],
-  ]
-
-  stats.forEach(([label, value], index) => {
-    const x = padding + index * 180
-    context.fillStyle = '#ffffff'
-    context.fillRect(x, 158, 150, 40)
-    context.fillStyle = '#667085'
-    context.font = '700 12px Arial'
-    context.fillText(String(label).toUpperCase(), x + 12, 174)
-    context.fillStyle = '#111827'
-    context.font = '700 18px Arial'
-    context.fillText(String(value), x + 12, 194)
-  })
-
-  let y = headerHeight
-
-  if (measuredGroups.length === 0) {
-    context.fillStyle = '#111827'
-    context.font = '700 22px Arial'
-    context.fillText('Nenhuma figurinha encontrada para esse filtro.', padding, y)
+  function mm(value: number) {
+    return value * scale
   }
 
-  measuredGroups.forEach((group, index) => {
-    drawRoundRect(context, padding, y, contentWidth, group.height, 12)
-    context.fillStyle = index % 2 === 0 ? '#ffffff' : '#f9fafb'
-    context.fill()
-    context.strokeStyle = '#d7e0e6'
-    context.lineWidth = 1
-    context.stroke()
+  function pt(value: number) {
+    return (value * scale) / 2.83465
+  }
+
+  function pageTop(pageIndex: number) {
+    return pageIndex * mm(pageHeight + pageGap)
+  }
+
+  function setFont(size: number, weight = '700') {
+    context.font = `${weight} ${pt(size).toFixed(2)}px Arial`
+  }
+
+  function drawText(
+    text: string,
+    x: number,
+    y: number,
+    options: {
+      align?: CanvasTextAlign
+      color?: string
+      maxWidth?: number
+      pageIndex?: number
+      size?: number
+      weight?: string
+    } = {},
+  ) {
+    const pageIndex = options.pageIndex ?? 0
+
+    context.fillStyle = options.color ?? '#111827'
+    context.textAlign = options.align ?? 'left'
+    context.textBaseline = 'alphabetic'
+    setFont(options.size ?? 5.4, options.weight ?? '700')
+
+    if (options.maxWidth) {
+      context.fillText(text, mm(x), pageTop(pageIndex) + mm(y), mm(options.maxWidth))
+      return
+    }
+
+    context.fillText(text, mm(x), pageTop(pageIndex) + mm(y))
+  }
+
+  function drawFittedText(
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    pageIndex: number,
+    size = 4.2,
+    minSize = 3.2,
+  ) {
+    let currentSize = size
+
+    do {
+      setFont(currentSize)
+      currentSize -= 0.2
+    } while (context.measureText(text).width > mm(maxWidth) && currentSize >= minSize)
 
     context.fillStyle = '#111827'
-    context.font = '700 22px Arial'
-    group.itemLines.forEach((line, lineIndex) => {
-      context.fillText(line, padding + 18, y + 30 + lineIndex * itemLineHeight)
+    context.textAlign = 'center'
+    context.textBaseline = 'alphabetic'
+    context.fillText(text, mm(x), pageTop(pageIndex) + mm(y))
+  }
+
+  function drawRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    pageIndex: number,
+    fill: string,
+    stroke: string,
+  ) {
+    context.fillStyle = fill
+    context.strokeStyle = stroke
+    context.lineWidth = Math.max(1, mm(0.12))
+    context.fillRect(mm(x), pageTop(pageIndex) + mm(y), mm(width), mm(height))
+    context.strokeRect(mm(x), pageTop(pageIndex) + mm(y), mm(width), mm(height))
+  }
+
+  function drawHeader(pageIndex: number) {
+    const top = pageTop(pageIndex)
+
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, top, mm(pageWidth), mm(pageHeight))
+    drawText('Copa 2026 - Folha A4 de conferencia', margin, 8, { pageIndex, size: 10 })
+    drawText(buildCompactCategoryLine(summary), margin, 12, {
+      color: '#667085',
+      pageIndex,
+      size: 6.6,
+    })
+    drawText(summary.sectionLabel, pageWidth - margin, 8, {
+      align: 'right',
+      color: '#667085',
+      pageIndex,
+      size: 6.6,
+    })
+    drawText(`Pagina ${pageIndex + 1}`, pageWidth - margin, 12, {
+      align: 'right',
+      color: '#667085',
+      pageIndex,
+      size: 6.6,
     })
 
-    y += group.height + groupGap
+    context.strokeStyle = '#235347'
+    context.lineWidth = Math.max(1, mm(0.25))
+    context.beginPath()
+    context.moveTo(mm(margin), top + mm(14))
+    context.lineTo(mm(pageWidth - margin), top + mm(14))
+    context.stroke()
+  }
+
+  function drawFooter(pageIndex: number) {
+    drawText(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, margin, pageHeight - footerBottom, {
+      color: '#667085',
+      pageIndex,
+      size: 5.8,
+      weight: '400',
+    })
+    drawText(
+      'Marque os quadradinhos com caneta durante as trocas.',
+      pageWidth - margin,
+      pageHeight - footerBottom,
+      {
+        align: 'right',
+        color: '#667085',
+        pageIndex,
+        size: 5.8,
+        weight: '400',
+      },
+    )
+  }
+
+  canvas.width = mm(pageWidth)
+  canvas.height = mm(pageCount * pageHeight + Math.max(0, pageCount - 1) * pageGap)
+  context.fillStyle = pageCount > 1 ? '#e5e7eb' : '#ffffff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+
+  let pageIndex = 0
+  let y = headerY
+  let currentGroupKey = ''
+  drawHeader(pageIndex)
+
+  if (groups.length === 0) {
+    drawText('Nenhuma figurinha encontrada para esse filtro.', margin, y, {
+      pageIndex,
+      size: 10,
+      weight: '400',
+    })
+  }
+
+  groups.forEach((group) => {
+    const chunks = chunkCompactItems(group.items, maxBoxesPerLine)
+    const rowHeight = chunks.length * boxHeight + Math.max(0, chunks.length - 1) * chunkGap
+    const groupKey = compactGroupKey(group)
+    const needsGroupGap = Boolean(currentGroupKey && groupKey !== currentGroupKey)
+    const requiredHeight = rowHeight + rowGap + (needsGroupGap ? groupGap : 0)
+
+    if (y + requiredHeight > pageHeight - pageBottom) {
+      drawFooter(pageIndex)
+      pageIndex += 1
+      y = headerY
+      currentGroupKey = ''
+      drawHeader(pageIndex)
+    }
+
+    if (currentGroupKey && groupKey !== currentGroupKey) {
+      y += groupGap
+    }
+    currentGroupKey = groupKey
+
+    drawRect(margin, y, labelWidth, boxHeight, pageIndex, '#f4f6f8', '#d1d8e2')
+    drawFittedText(group.sectionCode, margin + labelWidth / 2, y + 2.85, labelWidth - 1, pageIndex, 5.4)
+
+    chunks.forEach((chunk, chunkIndex) => {
+      const chunkY = y + chunkIndex * (boxHeight + chunkGap)
+
+      if (chunkIndex > 0) {
+        drawRect(margin, chunkY, labelWidth, boxHeight, pageIndex, '#ffffff', '#d1d8e2')
+      }
+
+      chunk.forEach((item, itemIndex) => {
+        const x = margin + labelWidth + labelGap + itemIndex * (boxWidth + boxGap)
+
+        drawRect(x, chunkY, boxWidth, boxHeight, pageIndex, '#ffffff', '#111827')
+        drawFittedText(
+          printableStickerBoxLabel(item),
+          x + boxWidth / 2,
+          chunkY + 2.8,
+          boxWidth - 1,
+          pageIndex,
+          4.2,
+          3,
+        )
+      })
+    })
+
+    y += rowHeight + rowGap
   })
+
+  drawFooter(pageIndex)
 
   const url = canvas.toDataURL('image/png')
   const link = document.createElement('a')
