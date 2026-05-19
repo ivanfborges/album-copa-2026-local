@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState, type UIEvent } from 'react'
 import { ChevronDown, ClipboardList, Download, Package, Upload } from 'lucide-react'
 import { albumSummary } from '../data/album'
 import { FlagIcon } from '../components/FlagIcon'
@@ -30,6 +30,119 @@ type DashboardPageProps = {
   onApplyPackEntry: () => void
 }
 
+type HighlightedCodeTextareaProps = {
+  value: string
+  rows: number
+  placeholder: string
+  repeatedCodes: StickerCodeImpact['repeatedCodes']
+  onChange: (value: string) => void
+}
+
+const stickerCodePattern = /00|[A-Za-z]{2,6}\s*\d{1,2}/g
+
+function normalizeStickerCode(value: string) {
+  return value.toUpperCase().replace(/\s+/g, '')
+}
+
+function buildHighlightedCodeParts(
+  value: string,
+  repeatedCodes: StickerCodeImpact['repeatedCodes'],
+) {
+  const repeatedByCode = new Map(repeatedCodes.map((item) => [item.code, item.count]))
+  const totalByCode = new Map<string, number>()
+
+  for (const match of value.matchAll(stickerCodePattern)) {
+    const code = normalizeStickerCode(match[0])
+    totalByCode.set(code, (totalByCode.get(code) ?? 0) + 1)
+  }
+
+  const highlightAfterByCode = new Map<string, number>()
+
+  for (const [code, total] of totalByCode) {
+    const repeated = Math.min(total, repeatedByCode.get(code) ?? 0)
+    highlightAfterByCode.set(code, total - repeated)
+  }
+
+  const seenByCode = new Map<string, number>()
+  const parts: Array<{ id: number; text: string; repeated: boolean }> = []
+  let cursor = 0
+  let id = 0
+
+  for (const match of value.matchAll(stickerCodePattern)) {
+    const text = match[0]
+    const index = match.index ?? 0
+
+    if (index > cursor) {
+      parts.push({ id: id++, text: value.slice(cursor, index), repeated: false })
+    }
+
+    const code = normalizeStickerCode(text)
+    const seen = (seenByCode.get(code) ?? 0) + 1
+    seenByCode.set(code, seen)
+
+    parts.push({
+      id: id++,
+      text,
+      repeated: seen > (highlightAfterByCode.get(code) ?? Number.POSITIVE_INFINITY),
+    })
+    cursor = index + text.length
+  }
+
+  if (cursor < value.length) {
+    parts.push({ id, text: value.slice(cursor), repeated: false })
+  }
+
+  return parts
+}
+
+function HighlightedCodeTextarea({
+  value,
+  rows,
+  placeholder,
+  repeatedCodes,
+  onChange,
+}: HighlightedCodeTextareaProps) {
+  const highlightRef = useRef<HTMLPreElement>(null)
+  const highlightedParts = buildHighlightedCodeParts(value, repeatedCodes)
+
+  function handleScroll(event: UIEvent<HTMLTextAreaElement>) {
+    if (!highlightRef.current) {
+      return
+    }
+
+    highlightRef.current.scrollTop = event.currentTarget.scrollTop
+    highlightRef.current.scrollLeft = event.currentTarget.scrollLeft
+  }
+
+  return (
+    <div className="highlighted-code-input">
+      <pre ref={highlightRef} className="highlighted-code-layer" aria-hidden="true">
+        {value.length === 0 ? (
+          <span className="highlighted-code-placeholder">{placeholder}</span>
+        ) : (
+          highlightedParts.map((part) =>
+            part.repeated ? (
+              <mark key={part.id} className="highlighted-code-token repeated">
+                {part.text}
+              </mark>
+            ) : (
+              <span key={part.id}>{part.text}</span>
+            ),
+          )
+        )}
+      </pre>
+      <textarea
+        value={value}
+        rows={rows}
+        placeholder={placeholder}
+        spellCheck={false}
+        onScroll={handleScroll}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  )
+}
+
 export function DashboardPage({
   settings,
   stats,
@@ -51,14 +164,14 @@ export function DashboardPage({
   onApplyPackEntry,
 }: DashboardPageProps) {
   const [isTeamStatsExpanded, setIsTeamStatsExpanded] = useState(false)
-  const emptyTeams = teamProgressStats.filter((item) => item.completion === 0).length
-  const startedTeams = teamProgressStats.filter(
-    (item) => item.completion > 0 && item.completion <= 50,
-  ).length
+  const emptyTeams = teamProgressStats.filter((item) => item.owned === 0).length
+  const startedTeams = teamProgressStats.filter((item) => item.owned > 0 && item.owned <= 4).length
+  const evolvingTeams = teamProgressStats.filter((item) => item.owned >= 5 && item.owned <= 10).length
+  const pastHalfTeams = teamProgressStats.filter((item) => item.owned >= 11 && item.owned <= 15).length
   const almostCompleteTeams = teamProgressStats.filter(
-    (item) => item.completion > 50 && item.completion < 100,
+    (item) => item.owned > 15 && item.owned < item.total,
   ).length
-  const completedTeams = teamProgressStats.filter((item) => item.completion === 100).length
+  const completedTeams = teamProgressStats.filter((item) => item.owned === item.total).length
   const getCompactTeamName = (code: string, name: string) =>
     code === 'BIH' ? 'Bosnia' : name
   const formatTeamCount = (count: number, singular: string, plural: string) =>
@@ -117,36 +230,30 @@ export function DashboardPage({
 
         <section className="quick-tools-grid">
           <article className="tool-panel quick-entry-card">
-            <div className="quick-entry-header quick-entry-header-with-action">
+            <div className="quick-entry-header">
               <ClipboardList size={20} aria-hidden="true" />
               <div>
                 <strong>Entrada rápida</strong>
                 <span>Cole códigos como BRA1, ARG 10 ou FWC3</span>
               </div>
-              <button
-                type="button"
-                className="warning-action compact-action remove-all-duplicates-action"
-                onClick={onRemoveExtraDuplicates}
-                disabled={stats.repeatedTotal === 0}
-                title="Remover todas as quantidades extras e manter uma unidade de cada figurinha"
-              >
-                Remover todas repetidas
-              </button>
             </div>
-            <textarea
+            <HighlightedCodeTextarea
               value={quickEntryText}
               rows={4}
               placeholder="BRA1 BRA2 ARG10 FWC3"
-              onChange={(event) => onQuickEntryTextChange(event.target.value)}
+              repeatedCodes={quickEntryImpact.repeatedCodes}
+              onChange={onQuickEntryTextChange}
             />
             <div className="quick-entry-footer">
-              <div className="entry-summary">
+              <div className="entry-feedback">
+                <div className="entry-summary">
                 <span>{quickEntryPreview.totalValid} válida(s)</span>
                 <span>{quickEntryImpact.newCount} nova(s)</span>
                 <span>{quickEntryImpact.repeatedCount} repetida(s)</span>
                 {quickEntryPreview.invalidCodes.length > 0 ? (
                   <span>{quickEntryPreview.invalidCodes.length} ignorada(s)</span>
                 ) : null}
+              </div>
               </div>
               <div className="quick-entry-actions">
                 <button type="button" className="danger-action compact-action" onClick={onRemoveQuickEntry}>
@@ -160,27 +267,39 @@ export function DashboardPage({
           </article>
 
           <article className="tool-panel quick-entry-card pack-card">
-            <div className="quick-entry-header">
+            <div className="quick-entry-header quick-entry-header-with-action">
               <Package size={20} aria-hidden="true" />
               <div>
                 <strong>Pacotinho</strong>
                 <span>Registre exatamente 7 figurinhas</span>
               </div>
+              <button
+                type="button"
+                className="warning-action compact-action remove-all-duplicates-action"
+                onClick={onRemoveExtraDuplicates}
+                disabled={stats.repeatedTotal === 0}
+                title="Remover todas as quantidades extras e manter uma unidade de cada figurinha"
+              >
+                Remover todas repetidas
+              </button>
             </div>
-            <textarea
+            <HighlightedCodeTextarea
               value={packEntryText}
               rows={4}
               placeholder="MEX1 BRA8 USA3 FWC12 ARG2 KOR20 ENG4"
-              onChange={(event) => onPackEntryTextChange(event.target.value)}
+              repeatedCodes={packEntryImpact.repeatedCodes}
+              onChange={onPackEntryTextChange}
             />
             <div className="pack-meter" aria-hidden="true">
               <span style={{ width: `${Math.min(100, (packEntryPreview.totalValid / 7) * 100)}%` }} />
             </div>
             <div className="quick-entry-footer">
-              <div className="pack-entry-summary">
+              <div className="entry-feedback">
+                <div className="pack-entry-summary">
                 <span>{packEntryPreview.totalValid}/7 válidas</span>
                 <span>{packEntryImpact.newCount} nova(s)</span>
                 <span>{packEntryImpact.repeatedCount} repetida(s)</span>
+              </div>
               </div>
               <button type="button" className="primary-action compact-action" onClick={onApplyPackEntry}>
                 Salvar pacote
@@ -211,6 +330,8 @@ export function DashboardPage({
               <span className="section-progress-badges">
                 <span>{formatTeamCount(emptyTeams, 'vazia', 'vazias')}</span>
                 <span>{formatTeamCount(startedTeams, 'iniciada', 'iniciadas')}</span>
+                <span>{formatTeamCount(evolvingTeams, 'evoluindo', 'evoluindo')}</span>
+                <span>{formatTeamCount(pastHalfTeams, 'passou da metade', 'passaram da metade')}</span>
                 <span>{formatTeamCount(almostCompleteTeams, 'quase completa', 'quase completas')}</span>
                 <span>{formatTeamCount(completedTeams, 'completa', 'completas')}</span>
               </span>

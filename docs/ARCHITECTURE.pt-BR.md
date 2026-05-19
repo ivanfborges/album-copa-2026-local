@@ -52,7 +52,7 @@ A aplicação usa IndexedDB via Dexie. O banco local se chama `album-copa-2026` 
 - `inventory`: quantidades das figurinhas.
 - `meta`: preferências e datas, como apelido do álbum e último salvamento.
 
-Cada clique em `+`, `-`, entrada rápida, remoção rápida, pacotinho ou limpeza em massa de repetidas salva automaticamente no navegador. A entrada rápida e o pacotinho também calculam, antes de salvar, quantos códigos válidos são novos para o álbum e quantos viram repetidas.
+Cada clique em `+`, `-`, entrada rápida, remoção rápida, pacotinho ou limpeza em massa de repetidas salva automaticamente no navegador. A entrada rápida e o pacotinho também calculam, antes de salvar, quantos códigos válidos são novos para o álbum e quantos viram repetidas. Códigos repetidos são destacados diretamente no campo de entrada sem adicionar dependência de editor rich text.
 
 ## Backup
 
@@ -101,6 +101,8 @@ Formatos:
 - Texto WhatsApp (`TXT/WPP`): texto compacto agrupado na ordem do álbum para compartilhar faltantes ou repetidas em conversas. Ele começa com um título com troféu e um marcador de categoria.
 
 A prévia da tela de relatórios usa a mesma estrutura agrupada das exportações, mantendo a conferência visual próxima do arquivo que será compartilhado.
+
+Nas exportações de checklist para impressão, figurinhas `FWC` e número `1` das seleções recebem destaque de brilhante/especial, enquanto as de número `13` recebem destaque de foto/formação do time. Esses marcadores são sutis para manter a folha limpa para impressão e conferência manual.
 
 ## Privacidade E Segurança
 

@@ -27,7 +27,7 @@ export function Sidebar({
   onNavigate,
   onToggleTheme,
 }: SidebarProps) {
-  const visibleStatusMessage = statusMessage.replace(/\.+$/, '')
+  const visibleStatusMessage = statusMessage.replace(/\./g, '').trim()
 
   return (
     <aside className="sidebar">

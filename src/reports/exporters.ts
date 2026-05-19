@@ -251,6 +251,64 @@ function printableStickerBoxLabel(item: string) {
   return item.replace(/\s*\(x(\d+)\)/, ' x$1')
 }
 
+function printableStickerNumber(item: string) {
+  return item.match(/^\d+|^00/)?.[0] ?? item
+}
+
+function getPrintableStickerStyle(sectionCode: string, item: string) {
+  const number = printableStickerNumber(item)
+
+  if (sectionCode === 'FWC' || number === '1') {
+    return {
+      fill: [255, 248, 222] as const,
+      stroke: [154, 107, 0] as const,
+      text: [17, 24, 39] as const,
+      lineWidth: 0.18,
+    }
+  }
+
+  if (number === '13') {
+    return {
+      fill: [232, 242, 255] as const,
+      stroke: [37, 99, 235] as const,
+      text: [17, 24, 39] as const,
+      lineWidth: 0.18,
+    }
+  }
+
+  return {
+    fill: [255, 255, 255] as const,
+    stroke: [17, 24, 39] as const,
+    text: [17, 24, 39] as const,
+    lineWidth: 0.12,
+  }
+}
+
+function rgb([red, green, blue]: readonly [number, number, number]) {
+  return `rgb(${red}, ${green}, ${blue})`
+}
+
+function setPdfFillColor(
+  doc: { setFillColor: (red: number, green: number, blue: number) => void },
+  [red, green, blue]: readonly [number, number, number],
+) {
+  doc.setFillColor(red, green, blue)
+}
+
+function setPdfDrawColor(
+  doc: { setDrawColor: (red: number, green: number, blue: number) => void },
+  [red, green, blue]: readonly [number, number, number],
+) {
+  doc.setDrawColor(red, green, blue)
+}
+
+function setPdfTextColor(
+  doc: { setTextColor: (red: number, green: number, blue: number) => void },
+  [red, green, blue]: readonly [number, number, number],
+) {
+  doc.setTextColor(red, green, blue)
+}
+
 async function saveCompactSheetPdf(rows: readonly ReportRow[], summary: ReportSummary, filename: string) {
   const groups = buildCompactReportGroups(rows, summary)
   const { jsPDF } = await import('jspdf')
@@ -359,11 +417,13 @@ async function saveCompactSheetPdf(rows: readonly ReportRow[], summary: ReportSu
 
       chunk.forEach((item, itemIndex) => {
         const x = margin + labelWidth + labelGap + itemIndex * (boxWidth + boxGap)
+        const style = getPrintableStickerStyle(group.sectionCode, item)
 
-        doc.setFillColor(255, 255, 255)
-        doc.setDrawColor(17, 24, 39)
+        setPdfFillColor(doc, style.fill)
+        setPdfDrawColor(doc, style.stroke)
+        doc.setLineWidth(style.lineWidth)
         doc.rect(x, chunkY, boxWidth, boxHeight, 'FD')
-        doc.setTextColor(17, 24, 39)
+        setPdfTextColor(doc, style.text)
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(4.2)
         doc.text(printableStickerBoxLabel(item), x + boxWidth / 2, chunkY + 2.8, {
@@ -495,6 +555,7 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
     pageIndex: number,
     size = 4.2,
     minSize = 3.2,
+    color = '#111827',
   ) {
     let currentSize = size
 
@@ -503,7 +564,7 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
       currentSize -= 0.2
     } while (context.measureText(text).width > mm(maxWidth) && currentSize >= minSize)
 
-    context.fillStyle = '#111827'
+    context.fillStyle = color
     context.textAlign = 'center'
     context.textBaseline = 'alphabetic'
     context.fillText(text, mm(x), pageTop(pageIndex) + mm(y))
@@ -517,10 +578,11 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
     pageIndex: number,
     fill: string,
     stroke: string,
+    lineWidth = 0.12,
   ) {
     context.fillStyle = fill
     context.strokeStyle = stroke
-    context.lineWidth = Math.max(1, mm(0.12))
+    context.lineWidth = Math.max(1, mm(lineWidth))
     context.fillRect(mm(x), pageTop(pageIndex) + mm(y), mm(width), mm(height))
     context.strokeRect(mm(x), pageTop(pageIndex) + mm(y), mm(width), mm(height))
   }
@@ -628,8 +690,19 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
 
       chunk.forEach((item, itemIndex) => {
         const x = margin + labelWidth + labelGap + itemIndex * (boxWidth + boxGap)
+        const style = getPrintableStickerStyle(group.sectionCode, item)
 
-        drawRect(x, chunkY, boxWidth, boxHeight, pageIndex, '#ffffff', '#111827')
+        drawRect(
+          x,
+          chunkY,
+          boxWidth,
+          boxHeight,
+          pageIndex,
+          rgb(style.fill),
+          rgb(style.stroke),
+          style.lineWidth,
+        )
+        context.fillStyle = rgb(style.text)
         drawFittedText(
           printableStickerBoxLabel(item),
           x + boxWidth / 2,
@@ -638,6 +711,7 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
           pageIndex,
           4.2,
           3,
+          rgb(style.text),
         )
       })
     })

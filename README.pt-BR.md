@@ -15,13 +15,14 @@ O app roda no navegador, salva automaticamente no IndexedDB e permite exportar b
 - Filtros por todas, faltantes, tenho, repetidas e especiais.
 - Filtro de especiais combinável com faltantes, tenho, repetidas ou todas.
 - Busca por código, nome ou seleção.
-- Entrada rápida para adicionar ou remover códigos colados, mostrando quantas figurinhas são novas e quantas viram repetidas.
+- Entrada rápida para adicionar ou remover códigos colados, mostrando quantas figurinhas são novas, quantas viram repetidas e destacando repetidas direto no campo de texto.
 - Limpeza em massa de repetidas, removendo quantidades extras e mantendo uma unidade de cada figurinha.
-- Modo pacotinho com 7 figurinhas, mostrando quantas são novas e quantas são repetidas antes de salvar.
-- Estatísticas gerais e por seleção.
+- Modo pacotinho com 7 figurinhas, mostrando quantas são novas, quantas são repetidas e destacando repetidas direto no campo de texto antes de salvar.
+- Estatísticas gerais e por seleção, com faixas de progresso para vazias, iniciadas, evoluindo, passaram da metade, quase completas e completas.
 - Bandeiras por seleção usando ícones SVG.
 - Backup JSON com restauração por substituição ou mesclagem.
 - Relatórios compactos em CSV, PDF, PNG, imagem para celular, folha A4 imprimível e texto para WhatsApp, agrupados na ordem do álbum.
+- Checklists imprimíveis destacam figurinhas brilhantes (`FWC` e número `1` das seleções) e figurinhas de foto/formação do time (`13`) para facilitar conferência em trocas.
 - Tema claro/escuro.
 
 ## Tecnologias
@@ -141,7 +142,7 @@ Na tela **Relatórios**, escolha:
 
 A prévia e todos os formatos de exportação usam um layout compacto agrupado na ordem do álbum. Cada seção mostra apenas os números das figurinhas do filtro selecionado, e relatórios de repetidas incluem quantidades como `7 (x2)`. O texto para WhatsApp começa com um marcador curto, como `🏆 Copa 2026`, seguido pela categoria selecionada.
 
-As exportações PDF, PNG e A4 usam o mesmo layout de checklist em retrato, com uma linha por seção/seleção do álbum e um quadradinho para cada figurinha selecionada.
+As exportações PDF, PNG e A4 usam o mesmo layout de checklist em retrato, com uma linha por seção/seleção do álbum e um quadradinho para cada figurinha selecionada. Nesses checklists, figurinhas `FWC` e número `1` das seleções recebem destaque de brilhante/especial, enquanto as de número `13` recebem destaque de foto/formação do time.
 
 ## Privacidade
 

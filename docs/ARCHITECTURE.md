@@ -52,7 +52,7 @@ The app uses IndexedDB through Dexie. The local database is named `album-copa-20
 - `inventory`: sticker quantities.
 - `meta`: preferences and dates, such as album nickname and last saved timestamp.
 
-Every quantity change, quick add/remove action, pack entry action, or bulk duplicate cleanup is saved automatically in the browser. Quick entry and pack entry also calculate how many valid pasted codes are new to the album and how many will become duplicates before saving.
+Every quantity change, quick add/remove action, pack entry action, or bulk duplicate cleanup is saved automatically in the browser. Quick entry and pack entry also calculate how many valid pasted codes are new to the album and how many will become duplicates before saving. Repeated codes are highlighted inline in the entry field without adding a rich text editor dependency.
 
 ## Backup
 
@@ -101,6 +101,8 @@ Formats:
 - WhatsApp text: compact grouped text for sharing missing or duplicate lists in chat. It is ordered by album section and starts with a trophy title plus a category marker.
 
 The reports screen preview uses the same grouped structure as the exports, keeping the visual check close to the files the user will share.
+
+In printable checklist exports, `FWC` stickers and team sticker number `1` are highlighted as shiny/special trade targets, while sticker number `13` is highlighted as the team photo. These markers are intentionally subtle so the sheet remains clean for printing and manual checking.
 
 ## Privacy And Security
 

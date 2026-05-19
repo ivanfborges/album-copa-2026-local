@@ -14,13 +14,14 @@ The app runs in the browser, saves progress automatically with IndexedDB, and ex
 - Automatic duplicate detection.
 - Filters for all, missing, owned, duplicates, and special stickers.
 - Search by sticker code, name, or team.
-- Fast entry for adding or removing pasted sticker codes, with a preview of new versus duplicate stickers.
+- Fast entry for adding or removing pasted sticker codes, with a preview of new versus duplicate stickers and inline highlighting for repeated codes.
 - Bulk duplicate cleanup that removes extra quantities while keeping one copy of each sticker.
-- Pack mode for registering exactly 7 stickers, with a preview of new versus duplicate stickers.
-- Overall and per-team statistics.
+- Pack mode for registering exactly 7 stickers, with a preview of new versus duplicate stickers and inline highlighting for repeated codes.
+- Overall and per-team statistics, including progress bands for empty, started, evolving, past-half, almost-complete, and complete teams.
 - Team flags rendered as SVG icons.
 - JSON backup with replace or merge restore modes.
 - Compact CSV, PDF, PNG, mobile-friendly PNG, printable A4 checklist, and WhatsApp text report exports grouped by album order.
+- Printable checklist exports highlight shiny stickers (`FWC` and team sticker number `1`) and team photo stickers (`13`) for faster trade checks.
 - Special-sticker reports can be combined with missing, owned, duplicate, or full lists.
 - Light/dark theme.
 
@@ -141,7 +142,7 @@ On the **Reports** screen, choose:
 
 The report preview and all export formats use a compact grouped layout by album order. Each section lists only the sticker numbers needed for the selected filter, and duplicate reports include quantities such as `7 (x2)`. The WhatsApp text starts with a short title marker, for example `🏆 Copa 2026`, followed by the selected list category.
 
-The PDF, PNG, and A4 exports share a portrait checklist layout for printing or quick visual checking, with one line per album section/team and one markable box per selected sticker.
+The PDF, PNG, and A4 exports share a portrait checklist layout for printing or quick visual checking, with one line per album section/team and one markable box per selected sticker. In these checklist exports, `FWC` stickers and team sticker number `1` are highlighted as shiny/special trade targets, while sticker number `13` is highlighted as the team photo.
 
 ## Privacy
 

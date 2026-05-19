@@ -9,6 +9,10 @@ export type ParsedStickerCodes = {
 export type StickerCodeImpact = {
   newCount: number
   repeatedCount: number
+  repeatedCodes: Array<{
+    code: string
+    count: number
+  }>
 }
 
 export function parseStickerCodes(text: string, stickers: readonly Sticker[]): ParsedStickerCodes {
@@ -41,21 +45,30 @@ export function getStickerCodeImpact(
 ): StickerCodeImpact {
   let newCount = 0
   let repeatedCount = 0
+  const repeatedCodes: StickerCodeImpact['repeatedCodes'] = []
 
   for (const [stickerId, count] of parsed.counts) {
     const currentQuantity = inventoryQuantities.get(stickerId) ?? 0
 
     if (currentQuantity > 0) {
       repeatedCount += count
+      repeatedCodes.push({ code: stickerId, count })
       continue
     }
 
     newCount += 1
-    repeatedCount += Math.max(0, count - 1)
+
+    const duplicatedInEntry = Math.max(0, count - 1)
+    repeatedCount += duplicatedInEntry
+
+    if (duplicatedInEntry > 0) {
+      repeatedCodes.push({ code: stickerId, count: duplicatedInEntry })
+    }
   }
 
   return {
     newCount,
     repeatedCount,
+    repeatedCodes,
   }
 }

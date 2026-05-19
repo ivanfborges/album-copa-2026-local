@@ -41,6 +41,11 @@ describe('getStickerCodeImpact', () => {
     expect(impact).toEqual({
       newCount: 1,
       repeatedCount: 3,
+      repeatedCodes: [
+        { code: 'BRA1', count: 1 },
+        { code: 'ARG10', count: 1 },
+        { code: 'FWC3', count: 1 },
+      ],
     })
   })
 })
