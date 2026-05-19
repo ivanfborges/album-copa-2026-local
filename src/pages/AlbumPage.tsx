@@ -103,7 +103,6 @@ export function AlbumPage({
           <p className="eyebrow">Catálogo</p>
           <h2>{selectedSection ? selectedSection.name : 'Todas as figurinhas'}</h2>
         </div>
-        <span className="count-pill">{stickers.length} cromos</span>
       </div>
 
       <section className="tool-panel album-toolbar">

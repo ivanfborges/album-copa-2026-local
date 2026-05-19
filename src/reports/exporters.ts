@@ -1,4 +1,5 @@
 import { getFlagEmojiForSection } from '../data/flagEmojis'
+import { getFlagIconSrc } from '../data/flags'
 import type { ReportRow, ReportSummary } from './reportData'
 
 export type ReportExportFormat = 'csv' | 'pdf' | 'png' | 'mobilePng' | 'whatsappText' | 'a4Sheet'
@@ -137,34 +138,6 @@ export function buildWhatsappReportText(rows: readonly ReportRow[], summary: Rep
   return lines.join('\n')
 }
 
-function wrapCompactItems(
-  context: CanvasRenderingContext2D,
-  sectionCode: string,
-  items: readonly string[],
-  maxWidth: number,
-) {
-  const lines: string[] = []
-  let current = `${sectionCode} `
-
-  items.forEach((item) => {
-    const candidate = current.endsWith(' ') ? `${current}${item}` : `${current}, ${item}`
-
-    if (context.measureText(candidate).width <= maxWidth || current === `${sectionCode} `) {
-      current = candidate
-      return
-    }
-
-    lines.push(current)
-    current = item
-  })
-
-  if (current.trim()) {
-    lines.push(current)
-  }
-
-  return lines
-}
-
 function drawRoundRect(
   context: CanvasRenderingContext2D,
   x: number,
@@ -182,6 +155,41 @@ function drawRoundRect(
   context.arcTo(x, y + height, x, y, safeRadius)
   context.arcTo(x, y, x + width, y, safeRadius)
   context.closePath()
+}
+
+const flagImageCache = new Map<string, Promise<HTMLImageElement | null>>()
+
+function loadFlagImage(sectionCode: string) {
+  const flagSrc = getFlagIconSrc(sectionCode)
+
+  if (!flagSrc) {
+    return Promise.resolve(null)
+  }
+
+  const cached = flagImageCache.get(sectionCode)
+
+  if (cached) {
+    return cached
+  }
+
+  const imagePromise = new Promise<HTMLImageElement | null>((resolve) => {
+    const image = new Image()
+
+    image.onload = () => resolve(image)
+    image.onerror = () => resolve(null)
+    image.src = flagSrc
+  })
+
+  flagImageCache.set(sectionCode, imagePromise)
+  return imagePromise
+}
+
+async function loadFlagImages(sectionCodes: readonly string[]) {
+  const entries = await Promise.all(
+    [...new Set(sectionCodes)].map(async (sectionCode) => [sectionCode, await loadFlagImage(sectionCode)] as const),
+  )
+
+  return new Map(entries)
 }
 
 const a4SheetLayout = {
@@ -338,7 +346,7 @@ async function saveCompactSheetPdf(rows: readonly ReportRow[], summary: ReportSu
     doc.setTextColor(17, 24, 39)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(10)
-    doc.text('Copa 2026 - Folha A4 de conferencia', margin, 8)
+    doc.text('Copa 2026', margin, 8)
     doc.setFontSize(6.6)
     doc.setTextColor(102, 112, 133)
     doc.text(buildCompactCategoryLine(summary), margin, 12)
@@ -592,7 +600,7 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
 
     context.fillStyle = '#ffffff'
     context.fillRect(0, top, mm(pageWidth), mm(pageHeight))
-    drawText('Copa 2026 - Folha A4 de conferencia', margin, 8, { pageIndex, size: 10 })
+    drawText('Copa 2026', margin, 8, { pageIndex, size: 10 })
     drawText(buildCompactCategoryLine(summary), margin, 12, {
       color: '#667085',
       pageIndex,
@@ -730,47 +738,26 @@ export function exportReportPng(rows: readonly ReportRow[], summary: ReportSumma
   link.remove()
 }
 
-export function exportReportMobilePng(rows: readonly ReportRow[], summary: ReportSummary) {
+export async function exportReportMobilePng(rows: readonly ReportRow[], summary: ReportSummary) {
   const groups = buildCompactReportGroups(rows, summary)
+  const flagImages = await loadFlagImages(groups.map((group) => group.sectionCode))
   const width = 1080
-  const padding = 48
+  const height = 1920
+  const padding = 54
   const contentWidth = width - padding * 2
-  const headerHeight = 220
-  const groupGap = 14
-  const cardPadding = 24
-  const itemLineHeight = 36
-  const footerHeight = 52
-  const measureCanvas = document.createElement('canvas')
-  const measureContext = measureCanvas.getContext('2d')
-
-  if (!measureContext) {
-    throw new Error('Canvas indisponivel para exportar PNG mobile.')
-  }
-
-  measureContext.font = '700 30px Arial'
-
-  const measuredGroups = groups.map((group) => {
-    const itemLines = wrapCompactItems(
-      measureContext,
-      group.sectionCode,
-      group.items,
-      contentWidth - cardPadding * 2,
-    )
-    const height = cardPadding * 2 + itemLines.length * itemLineHeight
-
-    return {
-      ...group,
-      itemLines,
-      height,
-    }
-  })
-  const emptyHeight = groups.length === 0 ? 150 : 0
-  const height =
-    headerHeight +
-    measuredGroups.reduce((total, group) => total + group.height + groupGap, 0) +
-    emptyHeight +
-    footerHeight +
-    padding
+  const headerHeight = 154
+  const footerHeight = 34
+  const groupGap = groups.length > 36 ? 5 : 8
+  const availableRowsHeight = height - headerHeight - footerHeight - padding - Math.max(0, groups.length - 1) * groupGap
+  const rowHeight =
+    groups.length > 0
+      ? Math.max(25, Math.min(42, Math.floor(availableRowsHeight / groups.length)))
+      : 110
+  const flagWidth = 42
+  const codeWidth = 70
+  const rowPaddingX = 18
+  const itemStartX = padding + rowPaddingX + flagWidth + codeWidth + 24
+  const itemMaxWidth = width - padding - rowPaddingX - itemStartX
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
 
@@ -779,58 +766,107 @@ export function exportReportMobilePng(rows: readonly ReportRow[], summary: Repor
   }
 
   canvas.width = width
-  canvas.height = Math.max(720, height)
+  canvas.height = height
 
   context.fillStyle = '#0b1120'
   context.fillRect(0, 0, canvas.width, canvas.height)
 
-  const headerGradient = context.createLinearGradient(0, 0, width, 210)
+  const headerGradient = context.createLinearGradient(0, 0, width, headerHeight)
   headerGradient.addColorStop(0, '#12372f')
+  headerGradient.addColorStop(0.52, '#0f2d2a')
   headerGradient.addColorStop(1, '#0b1120')
   context.fillStyle = headerGradient
-  context.fillRect(0, 0, width, 220)
+  context.fillRect(0, 0, width, headerHeight)
 
   context.fillStyle = '#f8fafc'
-  context.font = '800 46px Arial'
-  context.fillText('Copa 2026', padding, 70)
+  context.font = '800 48px Arial'
+  context.fillText('Copa 2026', padding, 62)
   context.font = '800 34px Arial'
-  context.fillText(buildCompactCategoryLine(summary), padding, 128)
+  context.fillText(buildCompactCategoryLine(summary), padding, 112)
 
   context.fillStyle = '#34d399'
-  context.fillRect(padding, 150, 210, 6)
+  context.fillRect(padding, 132, 212, 7)
 
-  context.fillStyle = '#d7dde8'
-  context.font = '600 22px Arial'
-  context.fillText(`${groups.length} secao(oes)`, padding, 190)
-  context.fillStyle = '#9aa5b5'
-  context.font = '400 20px Arial'
-  context.fillText(`Gerado em ${formatGeneratedAt(summary.generatedAt)}`, padding + 170, 190)
+  context.fillStyle = '#94a3b8'
+  context.font = '600 20px Arial'
+  context.textAlign = 'right'
+  context.fillText(summary.sectionLabel, width - padding, 62)
+  context.textAlign = 'left'
 
   let y = headerHeight
 
-  if (measuredGroups.length === 0) {
+  if (groups.length === 0) {
     context.fillStyle = '#d7dde8'
     context.font = '700 28px Arial'
     context.fillText('Nenhuma figurinha encontrada para esse filtro.', padding, y)
-    y += emptyHeight
+    y += rowHeight
   }
 
-  measuredGroups.forEach((group) => {
-    drawRoundRect(context, padding, y, contentWidth, group.height, 18)
+  const drawingContext = context
+
+  function fitText(text: string, maxWidth: number, baseSize: number, minSize: number, weight = '800') {
+    let size = baseSize
+
+    do {
+      drawingContext.font = `${weight} ${size}px Arial`
+      size -= 1
+    } while (drawingContext.measureText(text).width > maxWidth && size >= minSize)
+  }
+
+  groups.forEach((group) => {
+    drawRoundRect(context, padding, y, contentWidth, rowHeight, 14)
     context.fillStyle = '#172033'
     context.fill()
     context.strokeStyle = '#273244'
     context.lineWidth = 2
     context.stroke()
 
-    const titleY = y + cardPadding + 6
-    context.fillStyle = '#d7dde8'
-    context.font = '700 30px Arial'
-    group.itemLines.forEach((line, index) => {
-      context.fillText(line, padding + cardPadding, titleY + index * itemLineHeight)
-    })
+    const centerY = y + rowHeight / 2
+    const flagImage = flagImages.get(group.sectionCode) ?? null
+    const flagCenterX = padding + rowPaddingX + flagWidth / 2
+    const flagHeight = Math.max(14, Math.min(28, rowHeight - 8))
+    const flagDrawWidth = Math.min(38, flagHeight * (4 / 3))
+    const flagX = flagCenterX - flagDrawWidth / 2
+    const flagY = centerY - flagHeight / 2
 
-    y += group.height + groupGap
+    if (group.sectionCode === 'FWC') {
+      drawRoundRect(context, flagX, flagY, flagDrawWidth, flagHeight, 5)
+      context.fillStyle = '#f8fafc'
+      context.fill()
+      const shineGradient = context.createLinearGradient(flagX, flagY, flagX + flagDrawWidth, flagY + flagHeight)
+      shineGradient.addColorStop(0, '#ffffff')
+      shineGradient.addColorStop(0.35, '#d8dde7')
+      shineGradient.addColorStop(0.54, '#ffffff')
+      shineGradient.addColorStop(1, '#9aa6b8')
+      context.fillStyle = shineGradient
+      context.fill()
+      context.strokeStyle = '#e5e7eb'
+      context.lineWidth = 1.5
+      context.stroke()
+    } else if (flagImage) {
+      context.save()
+      drawRoundRect(context, flagX, flagY, flagDrawWidth, flagHeight, 4)
+      context.clip()
+      context.drawImage(flagImage, flagX, flagY, flagDrawWidth, flagHeight)
+      context.restore()
+      context.strokeStyle = '#273244'
+      context.lineWidth = 1
+      drawRoundRect(context, flagX, flagY, flagDrawWidth, flagHeight, 4)
+      context.stroke()
+    }
+
+    context.textAlign = 'left'
+    context.textBaseline = 'middle'
+    context.fillStyle = '#5eead4'
+    context.font = `800 ${Math.max(17, Math.min(24, rowHeight - 10))}px Arial`
+    context.fillText(group.sectionCode, padding + rowPaddingX + flagWidth + 8, centerY)
+
+    const itemText = group.items.join(', ')
+    fitText(itemText, itemMaxWidth, Math.max(17, Math.min(25, rowHeight - 8)), 12)
+    context.fillStyle = '#e5edf8'
+    context.fillText(itemText, itemStartX, centerY, itemMaxWidth)
+
+    y += rowHeight + groupGap
   })
 
   context.fillStyle = '#64748b'

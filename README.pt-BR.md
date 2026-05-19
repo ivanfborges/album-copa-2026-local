@@ -18,7 +18,7 @@ O app roda no navegador, salva automaticamente no IndexedDB e permite exportar b
 - Entrada rápida para adicionar ou remover códigos colados, mostrando quantas figurinhas são novas, quantas viram repetidas e destacando repetidas direto no campo de texto.
 - Limpeza em massa de repetidas, removendo quantidades extras e mantendo uma unidade de cada figurinha.
 - Modo pacotinho com 7 figurinhas, mostrando quantas são novas, quantas são repetidas e destacando repetidas direto no campo de texto antes de salvar.
-- Estatísticas gerais e por seleção, com faixas de progresso para vazias, iniciadas, evoluindo, passaram da metade, quase completas e completas.
+- Estatísticas gerais e por seleção, com faixas de progresso para vazias, evoluindo, passaram da metade, quase completas e completas.
 - Bandeiras por seleção usando ícones SVG.
 - Backup JSON com restauração por substituição ou mesclagem.
 - Relatórios compactos em CSV, PDF, PNG, imagem para celular, folha A4 imprimível e texto para WhatsApp, agrupados na ordem do álbum.
@@ -111,7 +111,7 @@ Executa o ESLint.
 npm test
 ```
 
-Executa testes unitários.
+Executa testes unitários e testes básicos de renderização das telas.
 
 ```bash
 npm audit --audit-level=moderate

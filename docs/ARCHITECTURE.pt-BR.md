@@ -14,7 +14,7 @@ Este projeto é um aplicativo web local para controle de figurinhas do álbum Pa
 - Canvas API: geração de relatórios PNG.
 - flag-icons: ícones SVG de bandeiras com renderização consistente entre plataformas.
 - CSS nativo: layout, tema claro/escuro e responsividade.
-- Vitest: testes unitários de regras de negócio, relatórios e exportações compactas.
+- Vitest: testes unitários de regras de negócio, relatórios/exportações e renderização básica das telas.
 
 ## Visão Geral
 

@@ -441,7 +441,7 @@ function App() {
       }
 
       if (format === 'mobilePng') {
-        exportReportMobilePng(reportRows, reportSummary)
+        await exportReportMobilePng(reportRows, reportSummary)
       }
 
       let whatsappResult: WhatsappTextExportResult | undefined

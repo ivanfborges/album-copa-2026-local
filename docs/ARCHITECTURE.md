@@ -14,7 +14,7 @@ This project is a local-first web app for tracking a personal World Cup 2026 sti
 - Canvas API: PNG report generation.
 - flag-icons: SVG flag icons rendered consistently across platforms.
 - Native CSS: layout, light/dark theme, and responsiveness.
-- Vitest: unit tests for business rules and report data.
+- Vitest: unit tests for business rules, report data/exporters, and page smoke rendering.
 
 ## Overview
 

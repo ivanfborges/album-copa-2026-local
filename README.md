@@ -17,7 +17,7 @@ The app runs in the browser, saves progress automatically with IndexedDB, and ex
 - Fast entry for adding or removing pasted sticker codes, with a preview of new versus duplicate stickers and inline highlighting for repeated codes.
 - Bulk duplicate cleanup that removes extra quantities while keeping one copy of each sticker.
 - Pack mode for registering exactly 7 stickers, with a preview of new versus duplicate stickers and inline highlighting for repeated codes.
-- Overall and per-team statistics, including progress bands for empty, started, evolving, past-half, almost-complete, and complete teams.
+- Overall and per-team statistics, including progress bands for empty, evolving, past-half, almost-complete, and complete teams.
 - Team flags rendered as SVG icons.
 - JSON backup with replace or merge restore modes.
 - Compact CSV, PDF, PNG, mobile-friendly PNG, printable A4 checklist, and WhatsApp text report exports grouped by album order.
@@ -111,7 +111,7 @@ Runs ESLint.
 npm test
 ```
 
-Runs unit tests.
+Runs unit and page smoke tests.
 
 ```bash
 npm audit --audit-level=moderate

@@ -165,8 +165,7 @@ export function DashboardPage({
 }: DashboardPageProps) {
   const [isTeamStatsExpanded, setIsTeamStatsExpanded] = useState(false)
   const emptyTeams = teamProgressStats.filter((item) => item.owned === 0).length
-  const startedTeams = teamProgressStats.filter((item) => item.owned > 0 && item.owned <= 4).length
-  const evolvingTeams = teamProgressStats.filter((item) => item.owned >= 5 && item.owned <= 10).length
+  const evolvingTeams = teamProgressStats.filter((item) => item.owned > 0 && item.owned <= 10).length
   const pastHalfTeams = teamProgressStats.filter((item) => item.owned >= 11 && item.owned <= 15).length
   const almostCompleteTeams = teamProgressStats.filter(
     (item) => item.owned > 15 && item.owned < item.total,
@@ -329,7 +328,6 @@ export function DashboardPage({
             <span className="section-progress-meta">
               <span className="section-progress-badges">
                 <span>{formatTeamCount(emptyTeams, 'vazia', 'vazias')}</span>
-                <span>{formatTeamCount(startedTeams, 'iniciada', 'iniciadas')}</span>
                 <span>{formatTeamCount(evolvingTeams, 'evoluindo', 'evoluindo')}</span>
                 <span>{formatTeamCount(pastHalfTeams, 'passou da metade', 'passaram da metade')}</span>
                 <span>{formatTeamCount(almostCompleteTeams, 'quase completa', 'quase completas')}</span>
