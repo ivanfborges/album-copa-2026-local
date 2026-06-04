@@ -1,6 +1,6 @@
 import { APP_BACKUP_ID, ALBUM_ID } from '../data/album'
 import { stickers } from '../data/catalog'
-import type { BackupPayload, InventoryItem } from '../types'
+import type { BackupPayload, CollectionEvent, InventoryItem } from '../types'
 
 export type ParsedBackup = {
   payload: BackupPayload
@@ -9,6 +9,22 @@ export type ParsedBackup = {
 }
 
 const validStickerIds = new Set<string>(stickers.map((sticker) => sticker.id))
+const validBackupVersions = new Set([1, 2])
+const validEventTypes = new Set<CollectionEvent['type']>([
+  'sticker-set',
+  'bulk-add',
+  'bulk-remove',
+  'duplicates-trim',
+  'backup-restore',
+  'historical-batch',
+])
+const validEventSources = new Set<CollectionEvent['source']>([
+  'manual',
+  'quick-entry',
+  'pack',
+  'backup',
+  'historical',
+])
 
 function normalizeStickerId(value: unknown) {
   return typeof value === 'string' ? value.toUpperCase().replace(/\s+/g, '').trim() : ''
@@ -71,6 +87,61 @@ function normalizeInventory(items: unknown): {
   }
 }
 
+function normalizeCount(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : undefined
+}
+
+function normalizeEvents(items: unknown): CollectionEvent[] {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  const normalized = new Map<string, CollectionEvent>()
+
+  for (const rawItem of items) {
+    if (!rawItem || typeof rawItem !== 'object') {
+      continue
+    }
+
+    const item = rawItem as Partial<CollectionEvent>
+    const id = typeof item.id === 'string' && item.id.trim() ? item.id.trim() : ''
+    const type = item.type && validEventTypes.has(item.type) ? item.type : undefined
+    const source = item.source && validEventSources.has(item.source) ? item.source : undefined
+    const totalStickers = normalizeCount(item.totalStickers)
+
+    if (!id || !type || !source || totalStickers === undefined) {
+      continue
+    }
+
+    normalized.set(id, {
+      id,
+      type,
+      source,
+      occurredAt:
+        typeof item.occurredAt === 'string' ? item.occurredAt : new Date().toISOString(),
+      createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+      stickerId:
+        typeof item.stickerId === 'string' && validStickerIds.has(normalizeStickerId(item.stickerId))
+          ? normalizeStickerId(item.stickerId)
+          : undefined,
+      totalStickers,
+      uniqueStickers: normalizeCount(item.uniqueStickers),
+      repeatedStickers: normalizeCount(item.repeatedStickers),
+      affectedStickers: normalizeCount(item.affectedStickers),
+      quantityDelta:
+        typeof item.quantityDelta === 'number' && Number.isFinite(item.quantityDelta)
+          ? Math.floor(item.quantityDelta)
+          : undefined,
+      quantityAfter: normalizeCount(item.quantityAfter),
+      notes: typeof item.notes === 'string' ? item.notes : undefined,
+    })
+  }
+
+  return [...normalized.values()]
+}
+
 export function downloadJsonBackup(payload: BackupPayload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json',
@@ -90,16 +161,21 @@ export async function parseBackupFile(file: File): Promise<ParsedBackup> {
   const text = await file.text()
   const parsed = JSON.parse(text) as Partial<BackupPayload>
 
-  if (parsed.app !== APP_BACKUP_ID || parsed.albumId !== ALBUM_ID || parsed.version !== 1) {
+  if (
+    parsed.app !== APP_BACKUP_ID ||
+    parsed.albumId !== ALBUM_ID ||
+    !validBackupVersions.has(parsed.version ?? 0)
+  ) {
     throw new Error('Arquivo de backup incompativel.')
   }
 
   const normalized = normalizeInventory(parsed.inventory)
+  const collectionEvents = normalizeEvents(parsed.collectionEvents)
 
   return {
     payload: {
       app: APP_BACKUP_ID,
-      version: 1,
+      version: parsed.version === 2 ? 2 : 1,
       albumId: ALBUM_ID,
       exportedAt:
         typeof parsed.exportedAt === 'string' ? parsed.exportedAt : new Date().toISOString(),
@@ -118,6 +194,7 @@ export async function parseBackupFile(file: File): Promise<ParsedBackup> {
             : undefined,
       },
       inventory: normalized.inventory,
+      collectionEvents,
     },
     ignoredItems: normalized.ignoredItems,
     duplicateItems: normalized.duplicateItems,

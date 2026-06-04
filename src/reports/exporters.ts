@@ -125,14 +125,19 @@ export function buildWhatsappReportText(rows: readonly ReportRow[], summary: Rep
   }
 
   groups.forEach((group, index) => {
+    const previousGroup = groups[index - 1]
+    const changedAlbumBlock = previousGroup
+      ? compactGroupKey(previousGroup) !== compactGroupKey(group)
+      : false
+
+    if (changedAlbumBlock) {
+      lines.push('')
+    }
+
     const flag = getFlagEmojiForSection(group.sectionCode)
     const sectionLabel = flag ? `${flag} ${group.sectionCode}` : group.sectionCode
 
     lines.push(`${sectionLabel}: ${group.items.join(', ')}`)
-
-    if (index < groups.length - 1) {
-      lines.push('')
-    }
   })
 
   return lines.join('\n')

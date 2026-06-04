@@ -45,4 +45,54 @@ describe('parseBackupFile', () => {
       ),
     ).rejects.toThrow('Arquivo de backup incompativel.')
   })
+
+  it('normalizes collection history events from newer backups', async () => {
+    const parsed = await parseBackupFile(
+      backupFile({
+        app: 'album-copa-2026-local',
+        version: 2,
+        albumId: 'panini-fwc-2026',
+        exportedAt: '2026-05-18T00:00:00.000Z',
+        settings: { albumNickname: 'Teste' },
+        inventory: [],
+        collectionEvents: [
+          {
+            id: 'event-1',
+            type: 'historical-batch',
+            source: 'historical',
+            occurredAt: '2026-05-18T00:00:00.000Z',
+            createdAt: '2026-05-18T00:00:00.000Z',
+            totalStickers: 10,
+            uniqueStickers: 4,
+            repeatedStickers: 6,
+            affectedStickers: 4,
+            quantityDelta: 10,
+            quantityAfter: 10,
+            notes: 'lote antigo',
+          },
+          {
+            id: 'invalid-event',
+            type: 'unknown',
+            source: 'historical',
+            totalStickers: 10,
+          },
+        ],
+      }),
+    )
+
+    expect(parsed.payload.version).toBe(2)
+    expect(parsed.payload.collectionEvents).toHaveLength(1)
+    expect(parsed.payload.collectionEvents?.[0]).toMatchObject({
+      id: 'event-1',
+      type: 'historical-batch',
+      source: 'historical',
+      totalStickers: 10,
+      uniqueStickers: 4,
+      repeatedStickers: 6,
+      affectedStickers: 4,
+      quantityDelta: 10,
+      quantityAfter: 10,
+      notes: 'lote antigo',
+    })
+  })
 })

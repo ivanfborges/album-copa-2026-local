@@ -7,6 +7,7 @@ type BackupPageProps = {
   backupMessage: string
   settings: AlbumSettings
   savedStickerCount: number
+  collectionEventCount: number
   onBackupModeChange: (mode: BackupMode) => void
   onExportBackup: () => void
   onImportBackup: (file: File) => void
@@ -17,6 +18,7 @@ export function BackupPage({
   backupMessage,
   settings,
   savedStickerCount,
+  collectionEventCount,
   onBackupModeChange,
   onExportBackup,
   onImportBackup,
@@ -85,6 +87,10 @@ export function BackupPage({
         <article className="backup-summary-card">
           <span>Última abertura</span>
           <strong>{formatDateTime(settings.lastOpenedAt)}</strong>
+        </article>
+        <article className="backup-summary-card">
+          <span>Eventos no histórico</span>
+          <strong>{collectionEventCount}</strong>
         </article>
       </section>
 

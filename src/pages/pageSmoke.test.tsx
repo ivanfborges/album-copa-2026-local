@@ -1,11 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { buildAlbumSnapshot } from '../ai/albumSnapshot'
 import { orderedStickerSections, orderedStickers } from '../app/catalog'
 import { Sidebar } from '../components/Sidebar'
 import { parseStickerCodes, getStickerCodeImpact } from '../domain/quickEntry'
 import { getCollectionStats } from '../domain/stats'
 import { buildReportRows, buildReportSummary } from '../reports/reportData'
 import type { InventoryItem, SectionStats, TeamProgressStats } from '../types'
+import { AIvanPage } from './AIvanPage'
 import { AlbumPage } from './AlbumPage'
 import { BackupPage } from './BackupPage'
 import { DashboardPage } from './DashboardPage'
@@ -25,6 +27,21 @@ const settings = {
   lastOpenedAt: fixedDate,
   lastSavedAt: fixedDate,
 }
+const completionForecast = {
+  status: 'insufficient-data' as const,
+  missing: 977,
+  eventsUsed: 0,
+  totalStickersRecorded: 0,
+  reason: 'Registre pelo menos dois marcos ou entradas para estimar um ritmo confiavel',
+}
+const albumSnapshot = buildAlbumSnapshot({
+  settings,
+  stats: getCollectionStats(sampleInventory, orderedStickers.length),
+  stickers: orderedStickers,
+  inventoryByStickerId,
+  collectionEvents: [],
+  completionForecast,
+})
 
 function render(markup: React.ReactNode) {
   return renderToStaticMarkup(markup)
@@ -107,6 +124,25 @@ describe('page smoke rendering', () => {
     expect(html).toContain('Estatísticas por seleção')
   })
 
+  it('renders the AIvan forecast and historical milestones', () => {
+    const html = render(
+      <AIvanPage
+        albumSnapshot={albumSnapshot}
+        completionForecast={completionForecast}
+        stats={getCollectionStats(sampleInventory, orderedStickers.length)}
+        collectionEventCount={2}
+        onRecordHistoricalBatch={noop}
+      />,
+    )
+
+    expect(html).toContain('AIvan')
+    expect(html).toContain('Próxima melhor ação')
+    expect(html).toContain('Trocas recomendadas')
+    expect(html).toContain('Previsão de conclusão')
+    expect(html).toContain('Marcos')
+    expect(html).toContain('Registrar marco')
+  })
+
   it('renders the album catalog controls and sticker cards', () => {
     const sectionStats = buildSectionStats()
     const visibleStickers = orderedStickers.filter((sticker) => sticker.sectionCode === 'FWC').slice(0, 4)
@@ -168,6 +204,7 @@ describe('page smoke rendering', () => {
         backupMessage="Nenhum backup recuperado nesta sessão"
         settings={settings}
         savedStickerCount={sampleInventory.length}
+        collectionEventCount={2}
         onBackupModeChange={noop}
         onExportBackup={noop}
         onImportBackup={noop}

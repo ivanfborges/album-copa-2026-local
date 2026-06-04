@@ -65,7 +65,7 @@ npm run dev
 O terminal vai mostrar uma URL parecida com:
 
 ```txt
-http://localhost:5173/
+http://127.0.0.1:3001/
 ```
 
 Abra essa URL no navegador.
@@ -106,6 +106,39 @@ Evite subir esse arquivo de backup para repositórios públicos, porque ele cont
 3. Clique em **Recuperar dados**.
 4. Selecione o arquivo `.json` exportado anteriormente.
 
+## Registrar Marcos Históricos
+
+A tela **AIvan** tem a área **Marcos para IA**. Use somente se quiser registrar lotes antigos de forma agregada, como uma primeira entrega grande de figurinhas ou compras antigas de pacotinhos. Esses marcos não alteram o álbum atual; eles melhoram a previsão local de conclusão exibida no AIvan.
+
+## Opcional: Rodar O Chat Do AIvan
+
+O rastreador do álbum funciona sem o serviço de IA. Use esta parte apenas se quiser usar o chat local dentro do **AIvan**.
+
+1. Instale o Ollama: https://ollama.com/
+2. Baixe um modelo local:
+
+```bash
+ollama pull qwen3:4b
+```
+
+3. Em um segundo terminal, inicie o serviço de IA:
+
+```bash
+cd ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+4. Mantenha os dois terminais abertos:
+
+- frontend: `npm run dev`
+- serviço de IA: `uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`
+
+Por padrão, o chat envia um snapshot temporário do álbum somente para o serviço local em `127.0.0.1:8000`.
+
 ## Problemas Comuns
 
 ### O comando `npm` não funciona
@@ -123,12 +156,26 @@ npm.cmd run dev
 
 Confira se o terminal ainda está rodando `npm run dev`.
 
+Se o Windows mostrar erro de permissão em outra porta local, mantenha o comando padrão do projeto e abra:
+
+```txt
+http://127.0.0.1:3001/
+```
+
 ### Meus dados sumiram
 
 Verifique se você está usando o mesmo navegador e a mesma URL:
 
 ```txt
-http://localhost:5173/
+http://127.0.0.1:3001/
 ```
 
 Se tiver um backup JSON, restaure pela tela **Backup**.
+
+### O chat do AIvan não responde
+
+Confira se o Ollama está rodando, se o modelo foi baixado e se o terminal do serviço de IA continua aberto em:
+
+```txt
+http://127.0.0.1:8000/health
+```

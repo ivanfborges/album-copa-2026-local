@@ -65,7 +65,7 @@ npm run dev
 The terminal will show a URL similar to:
 
 ```txt
-http://localhost:5173/
+http://127.0.0.1:3001/
 ```
 
 Open that URL in your browser.
@@ -106,6 +106,39 @@ Avoid uploading this backup file to public repositories, because it contains you
 3. Click **Recover data**.
 4. Select the previously exported `.json` file.
 
+## Register Historical Milestones
+
+The **AIvan** screen has an **AI milestones** area. Use it only if you want to record old aggregate batches, such as a first large sticker delivery or older pack purchases. These milestones do not change your current album; they improve the local completion forecast shown on AIvan.
+
+## Optional: Run AIvan Chat
+
+The album tracker works without the AI service. Use this section only if you want the local chat inside **AIvan**.
+
+1. Install Ollama: https://ollama.com/
+2. Download a local model:
+
+```bash
+ollama pull qwen3:4b
+```
+
+3. In a second terminal, start the AI service:
+
+```bash
+cd ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+4. Keep both terminals open:
+
+- frontend: `npm run dev`
+- AI service: `uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`
+
+The chat sends a temporary album snapshot only to your local `127.0.0.1:8000` service by default.
+
 ## Common Issues
 
 ### The `npm` command does not work
@@ -123,12 +156,26 @@ npm.cmd run dev
 
 Check whether the terminal is still running `npm run dev`.
 
+If Windows shows a permission error for another local port, keep the project default command and open:
+
+```txt
+http://127.0.0.1:3001/
+```
+
 ### My data disappeared
 
 Check that you are using the same browser and the same URL:
 
 ```txt
-http://localhost:5173/
+http://127.0.0.1:3001/
 ```
 
 If you have a JSON backup, restore it from the **Backup** screen.
+
+### AIvan chat does not answer
+
+Check that Ollama is running, that the model was downloaded, and that the AI service terminal is still open on:
+
+```txt
+http://127.0.0.1:8000/health
+```

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, DatabaseBackup, Home, Moon, Sun } from 'lucide-react'
+import { BarChart3, BookOpen, BrainCircuit, DatabaseBackup, Home, Moon, Sun } from 'lucide-react'
 import { BrandMark } from './BrandMark'
 import { OptionalLocalImage } from './OptionalLocalImage'
 import type { PageId, ThemeMode } from '../types'
@@ -7,6 +7,7 @@ const pages: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'dashboard', label: 'Início', icon: Home },
   { id: 'album', label: 'Álbum', icon: BookOpen },
   { id: 'reports', label: 'Relatórios', icon: BarChart3 },
+  { id: 'aivan', label: 'AIvan', icon: BrainCircuit },
   { id: 'backup', label: 'Backup', icon: DatabaseBackup },
 ]
 
@@ -68,9 +69,8 @@ export function Sidebar({
       <div className="sidebar-art-slot" aria-hidden="true">
         <OptionalLocalImage
           sources={['/brand/sidebar-feature-art.png', '/brand/dashboard-side-art.png']}
-          className="sidebar-feature-art"
+          className="sidebar-art"
         />
-        <OptionalLocalImage src="/brand/sidebar-art.png" className="sidebar-art" />
       </div>
 
       <div className="sidebar-footer">

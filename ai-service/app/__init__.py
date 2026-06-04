@@ -1,0 +1,1 @@
+"""AIvan local AI service."""

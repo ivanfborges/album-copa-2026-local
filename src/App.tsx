@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import {
   defaultSectionCode,
@@ -7,13 +7,18 @@ import {
   orderedStickerSections,
   orderedStickers,
 } from './app/catalog'
+import { buildAlbumSnapshot } from './ai/albumSnapshot'
 import { downloadJsonBackup, parseBackupFile } from './backup/jsonBackup'
 import { Sidebar } from './components/Sidebar'
 import { stickers } from './data/catalog'
 import { groupBySectionCode } from './data/groups'
 import {
   buildBackupPayload,
+  getCollectionEvents,
+  getCollectionEventCount,
   getInventory,
+  recordCollectionEvent,
+  recordHistoricalBatch,
   removeExtraDuplicates,
   restoreBackup,
   saveSettings,
@@ -21,30 +26,26 @@ import {
   touchLastOpened,
 } from './db/storage'
 import { getStickerCodeImpact, parseStickerCodes } from './domain/quickEntry'
+import { buildCompletionForecast } from './domain/forecast'
 import { getCollectionStats } from './domain/stats'
-import { AlbumPage } from './pages/AlbumPage'
-import { BackupPage } from './pages/BackupPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { ReportsPage } from './pages/ReportsPage'
-import {
-  exportReportCsv,
-  exportReportA4SheetPdf,
-  exportReportMobilePng,
-  exportReportPdf,
-  exportReportPng,
-  exportReportWhatsappText,
-  type ReportExportFormat,
-  type WhatsappTextExportResult,
-} from './reports/exporters'
+import type { ReportExportFormat, WhatsappTextExportResult } from './reports/exporters'
 import { buildReportRows, buildReportSummary, type ReportSectionOption } from './reports/reportData'
 import type {
   AlbumSettings,
   AlbumStickerFilter,
   BackupMode,
+  CollectionEvent,
+  HistoricalBatchInput,
   InventoryItem,
   PageId,
   ThemeMode,
 } from './types'
+
+const AlbumPage = lazy(() => import('./pages/AlbumPage').then((module) => ({ default: module.AlbumPage })))
+const AIvanPage = lazy(() => import('./pages/AIvanPage').then((module) => ({ default: module.AIvanPage })))
+const BackupPage = lazy(() => import('./pages/BackupPage').then((module) => ({ default: module.BackupPage })))
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })))
 
 function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard')
@@ -53,6 +54,8 @@ function App() {
     albumNickname: 'Meu album da Copa 2026',
   })
   const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [collectionEvents, setCollectionEvents] = useState<CollectionEvent[]>([])
+  const [collectionEventCount, setCollectionEventCount] = useState(0)
   const [quickEntryText, setQuickEntryText] = useState('')
   const [packEntryText, setPackEntryText] = useState('')
   const [selectedSectionCode, setSelectedSectionCode] = useState<string>(defaultSectionCode)
@@ -90,10 +93,16 @@ function App() {
     async function loadData() {
       try {
         const openedSettings = await touchLastOpened()
-        const storedInventory = await getInventory()
+        const [storedInventory, storedEvents, storedEventCount] = await Promise.all([
+          getInventory(),
+          getCollectionEvents(),
+          getCollectionEventCount(),
+        ])
 
         setSettings(openedSettings)
         setInventory(storedInventory)
+        setCollectionEvents(storedEvents)
+        setCollectionEventCount(storedEventCount)
         setStatusMessage('Dados locais carregados.')
       } catch (error) {
         console.error(error)
@@ -120,6 +129,32 @@ function App() {
     [catalogInventory],
   )
   const stats = useMemo(() => getCollectionStats(catalogInventory, stickers.length), [catalogInventory])
+  const completionForecast = useMemo(
+    () =>
+      buildCompletionForecast({
+        events: collectionEvents,
+        stats,
+        totalStickers: stickers.length,
+      }),
+    [collectionEvents, stats],
+  )
+  const albumSnapshot = useMemo(
+    () => {
+      if (activePage !== 'aivan') {
+        return undefined
+      }
+
+      return buildAlbumSnapshot({
+        settings,
+        stats,
+        stickers: orderedStickers,
+        inventoryByStickerId,
+        collectionEvents,
+        completionForecast,
+      })
+    },
+    [activePage, collectionEvents, completionForecast, inventoryByStickerId, settings, stats],
+  )
   const sectionsWithStats = useMemo(
     () =>
       orderedStickerSections.map((section) => {
@@ -235,7 +270,11 @@ function App() {
       const payload = await buildBackupPayload()
       downloadJsonBackup(payload)
       setStatusMessage('Backup JSON exportado.')
-      setBackupMessage(`Backup exportado com ${payload.inventory.length} figurinhas salvas.`)
+      setBackupMessage(
+        `Backup exportado com ${payload.inventory.length} figurinhas salvas e ${
+          payload.collectionEvents?.length ?? 0
+        } evento(s) no histórico.`,
+      )
     } catch (error) {
       console.error(error)
       setStatusMessage('Nao foi possivel exportar o backup.')
@@ -247,7 +286,11 @@ function App() {
     try {
       const { payload, ignoredItems, duplicateItems } = await parseBackupFile(file)
       const restoredSettings = await restoreBackup(payload, backupMode)
-      const restoredInventory = await getInventory()
+      const [restoredInventory, restoredEvents, restoredEventCount] = await Promise.all([
+        getInventory(),
+        getCollectionEvents(),
+        getCollectionEventCount(),
+      ])
       const notes = [
         `${payload.inventory.length} figurinhas validas recuperadas`,
         ignoredItems > 0 ? `${ignoredItems} item(ns) ignorado(s)` : '',
@@ -256,6 +299,8 @@ function App() {
 
       setSettings(restoredSettings)
       setInventory(restoredInventory)
+      setCollectionEvents(restoredEvents)
+      setCollectionEventCount(restoredEventCount)
       setStatusMessage('Backup recuperado com sucesso.')
       setBackupMessage(`${notes.join(' - ')}.`)
     } catch (error) {
@@ -288,7 +333,13 @@ function App() {
 
     try {
       const savedAt = await saveStickerQuantity(stickerId, quantity)
+      const [storedEvents, storedEventCount] = await Promise.all([
+        getCollectionEvents(),
+        getCollectionEventCount(),
+      ])
       setSettings((current) => ({ ...current, lastSavedAt: savedAt }))
+      setCollectionEvents(storedEvents)
+      setCollectionEventCount(storedEventCount)
       setStatusMessage(quantity > 0 ? 'Figurinha salva automaticamente.' : 'Figurinha marcada como faltante.')
     } catch (error) {
       console.error(error)
@@ -345,7 +396,9 @@ function App() {
 
     try {
       const savedDates = await Promise.all(
-        changedItems.map((item) => saveStickerQuantity(item.stickerId, item.quantity)),
+        changedItems.map((item) =>
+          saveStickerQuantity(item.stickerId, item.quantity, { recordEvent: false }),
+        ),
       )
       const lastSavedAt = savedDates.at(-1) ?? optimisticSavedAt
       const invalidNote = parsed.invalidCodes.length
@@ -356,8 +409,23 @@ function App() {
         operation === 'add'
           ? ` ${entryImpact.newCount} nova(s), ${entryImpact.repeatedCount} repetida(s).`
           : ''
+      const event = await recordCollectionEvent({
+        occurredAt: lastSavedAt,
+        type: operation === 'add' ? 'bulk-add' : 'bulk-remove',
+        source: source === 'pack' ? 'pack' : 'quick-entry',
+        totalStickers: parsed.totalValid,
+        uniqueStickers: operation === 'add' ? entryImpact.newCount : 0,
+        repeatedStickers: operation === 'add' ? entryImpact.repeatedCount : 0,
+        affectedStickers: changedItems.length,
+        notes:
+          source === 'pack'
+            ? 'Registro pelo modo pacotinho.'
+            : 'Registro pela entrada rapida.',
+      })
 
-      setSettings((current) => ({ ...current, lastSavedAt }))
+      setSettings((current) => ({ ...current, lastSavedAt: event.createdAt || lastSavedAt }))
+      setCollectionEvents((current) => [...current, event])
+      setCollectionEventCount((current) => current + (event ? 1 : 0))
       setStatusMessage(`${parsed.totalValid} figurinha(s) ${actionMessage}.${entryImpactMessage}${invalidNote}`)
 
       if (source === 'quick') {
@@ -389,9 +457,15 @@ function App() {
 
     try {
       const result = await removeExtraDuplicates()
-      const storedInventory = await getInventory()
+      const [storedInventory, storedEvents, storedEventCount] = await Promise.all([
+        getInventory(),
+        getCollectionEvents(),
+        getCollectionEventCount(),
+      ])
 
       setInventory(storedInventory)
+      setCollectionEvents(storedEvents)
+      setCollectionEventCount(storedEventCount)
 
       if (result.lastSavedAt) {
         setSettings((current) => ({ ...current, lastSavedAt: result.lastSavedAt }))
@@ -410,6 +484,26 @@ function App() {
     }
   }
 
+  async function handleRecordHistoricalBatch(input: HistoricalBatchInput) {
+    try {
+      const event = await recordHistoricalBatch(input)
+      const [storedEvents, storedEventCount] = await Promise.all([
+        getCollectionEvents(),
+        getCollectionEventCount(),
+      ])
+
+      setCollectionEvents(storedEvents)
+      setCollectionEventCount(storedEventCount)
+      setSettings((current) => ({ ...current, lastSavedAt: event.createdAt }))
+      setStatusMessage('Marco histórico registrado.')
+      setBackupMessage('Marco histórico registrado para futuras previsões.')
+    } catch (error) {
+      console.error(error)
+      setStatusMessage('Nao foi possivel registrar o marco histórico.')
+      setBackupMessage(error instanceof Error ? error.message : 'Marco histórico inválido.')
+    }
+  }
+
   async function handleExportReport(format: ReportExportFormat) {
     const formatLabel: Record<ReportExportFormat, string> = {
       csv: 'CSV',
@@ -424,30 +518,32 @@ function App() {
     setReportExportMessage(`Preparando ${formatLabel[format]}...`)
 
     try {
+      const exporters = await import('./reports/exporters')
+
       if (format === 'csv') {
-        exportReportCsv(reportRows, reportSummary)
+        exporters.exportReportCsv(reportRows, reportSummary)
       }
 
       if (format === 'pdf') {
-        await exportReportPdf(reportRows, reportSummary)
+        await exporters.exportReportPdf(reportRows, reportSummary)
       }
 
       if (format === 'a4Sheet') {
-        await exportReportA4SheetPdf(reportRows, reportSummary)
+        await exporters.exportReportA4SheetPdf(reportRows, reportSummary)
       }
 
       if (format === 'png') {
-        exportReportPng(reportRows, reportSummary)
+        exporters.exportReportPng(reportRows, reportSummary)
       }
 
       if (format === 'mobilePng') {
-        await exportReportMobilePng(reportRows, reportSummary)
+        await exporters.exportReportMobilePng(reportRows, reportSummary)
       }
 
       let whatsappResult: WhatsappTextExportResult | undefined
 
       if (format === 'whatsappText') {
-        whatsappResult = await exportReportWhatsappText(reportRows, reportSummary)
+        whatsappResult = await exporters.exportReportWhatsappText(reportRows, reportSummary)
       }
 
       const successMessage =
@@ -503,63 +599,76 @@ function App() {
           />
         )}
 
-        {activePage === 'album' && (
-          <AlbumPage
-            selectedSection={selectedSection}
-            selectedSectionCode={selectedSectionCode}
-            albumSearch={albumSearch}
-            stickerFilter={stickerFilter}
-            showSpecialStickersOnly={showSpecialStickersOnly}
-            visibleStickers={visibleStickers}
-            sectionsWithStats={sectionsWithStats}
-            inventoryByStickerId={inventoryByStickerId}
-            onSearchChange={setAlbumSearch}
-            onFilterChange={setStickerFilter}
-            onSpecialFilterToggle={() => setShowSpecialStickersOnly((current) => !current)}
-            onSectionChange={setSelectedSectionCode}
-            onStickerQuantityChange={(stickerId, quantity) =>
-              void handleStickerQuantityChange(stickerId, quantity)
-            }
-          />
-        )}
+        <Suspense fallback={<p className="meta-line">Carregando tela...</p>}>
+          {activePage === 'album' && (
+            <AlbumPage
+              selectedSection={selectedSection}
+              selectedSectionCode={selectedSectionCode}
+              albumSearch={albumSearch}
+              stickerFilter={stickerFilter}
+              showSpecialStickersOnly={showSpecialStickersOnly}
+              visibleStickers={visibleStickers}
+              sectionsWithStats={sectionsWithStats}
+              inventoryByStickerId={inventoryByStickerId}
+              onSearchChange={setAlbumSearch}
+              onFilterChange={setStickerFilter}
+              onSpecialFilterToggle={() => setShowSpecialStickersOnly((current) => !current)}
+              onSectionChange={setSelectedSectionCode}
+              onStickerQuantityChange={(stickerId, quantity) =>
+                void handleStickerQuantityChange(stickerId, quantity)
+              }
+            />
+          )}
 
-        {activePage === 'reports' && (
-          <ReportsPage
-            reportFilter={reportFilter}
-            showSpecialOnly={showReportSpecialOnly}
-            reportSectionCode={reportSectionCode}
-            reportSectionLabel={reportSectionLabel}
-            reportRows={reportRows}
-            reportSummary={reportSummary}
-            reportExportMessage={reportExportMessage}
-            reportExportingFormat={reportExportingFormat}
-            onFilterChange={(filter) => {
-              setReportFilter(filter)
-              setReportExportMessage('')
-            }}
-            onSpecialFilterToggle={() => {
-              setShowReportSpecialOnly((current) => !current)
-              setReportExportMessage('')
-            }}
-            onSectionChange={(sectionCode) => {
-              setReportSectionCode(sectionCode)
-              setReportExportMessage('')
-            }}
-            onExportReport={(format) => void handleExportReport(format)}
-          />
-        )}
+          {activePage === 'reports' && (
+            <ReportsPage
+              reportFilter={reportFilter}
+              showSpecialOnly={showReportSpecialOnly}
+              reportSectionCode={reportSectionCode}
+              reportSectionLabel={reportSectionLabel}
+              reportRows={reportRows}
+              reportSummary={reportSummary}
+              reportExportMessage={reportExportMessage}
+              reportExportingFormat={reportExportingFormat}
+              onFilterChange={(filter) => {
+                setReportFilter(filter)
+                setReportExportMessage('')
+              }}
+              onSpecialFilterToggle={() => {
+                setShowReportSpecialOnly((current) => !current)
+                setReportExportMessage('')
+              }}
+              onSectionChange={(sectionCode) => {
+                setReportSectionCode(sectionCode)
+                setReportExportMessage('')
+              }}
+              onExportReport={(format) => void handleExportReport(format)}
+            />
+          )}
 
-        {activePage === 'backup' && (
-          <BackupPage
-            backupMode={backupMode}
-            backupMessage={backupMessage}
-            settings={settings}
-            savedStickerCount={catalogInventory.length}
-            onBackupModeChange={setBackupMode}
-            onExportBackup={() => void handleExportBackup()}
-            onImportBackup={(file) => void handleImportBackup(file)}
-          />
-        )}
+          {activePage === 'aivan' && albumSnapshot && (
+            <AIvanPage
+              albumSnapshot={albumSnapshot}
+              completionForecast={completionForecast}
+              stats={stats}
+              collectionEventCount={collectionEventCount}
+              onRecordHistoricalBatch={(input) => void handleRecordHistoricalBatch(input)}
+            />
+          )}
+
+          {activePage === 'backup' && (
+            <BackupPage
+              backupMode={backupMode}
+              backupMessage={backupMessage}
+              settings={settings}
+              savedStickerCount={catalogInventory.length}
+              collectionEventCount={collectionEventCount}
+              onBackupModeChange={setBackupMode}
+              onExportBackup={() => void handleExportBackup()}
+              onImportBackup={(file) => void handleImportBackup(file)}
+            />
+          )}
+        </Suspense>
       </main>
     </div>
   )

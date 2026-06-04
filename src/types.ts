@@ -1,4 +1,4 @@
-export type PageId = 'dashboard' | 'album' | 'reports' | 'backup'
+export type PageId = 'dashboard' | 'album' | 'reports' | 'aivan' | 'backup'
 
 export type StickerFilter = 'all' | 'missing' | 'owned' | 'repeated' | 'special'
 
@@ -52,6 +52,45 @@ export type InventoryItem = {
   updatedAt: string
 }
 
+export type CollectionEventType =
+  | 'sticker-set'
+  | 'bulk-add'
+  | 'bulk-remove'
+  | 'duplicates-trim'
+  | 'backup-restore'
+  | 'historical-batch'
+
+export type CollectionEventSource =
+  | 'manual'
+  | 'quick-entry'
+  | 'pack'
+  | 'backup'
+  | 'historical'
+
+export type CollectionEvent = {
+  id: string
+  occurredAt: string
+  createdAt: string
+  type: CollectionEventType
+  source: CollectionEventSource
+  stickerId?: string
+  totalStickers: number
+  uniqueStickers?: number
+  repeatedStickers?: number
+  affectedStickers?: number
+  quantityDelta?: number
+  quantityAfter?: number
+  notes?: string
+}
+
+export type HistoricalBatchInput = {
+  occurredAt: string
+  totalStickers: number
+  uniqueStickers: number
+  repeatedStickers: number
+  notes?: string
+}
+
 export type AlbumSettings = {
   albumNickname: string
   lastOpenedAt?: string
@@ -62,11 +101,12 @@ export type BackupMode = 'replace' | 'merge'
 
 export type BackupPayload = {
   app: 'album-copa-2026-local'
-  version: 1
+  version: 1 | 2
   albumId: 'panini-fwc-2026'
   exportedAt: string
   settings: AlbumSettings
   inventory: InventoryItem[]
+  collectionEvents?: CollectionEvent[]
 }
 
 export type AppMeta = {

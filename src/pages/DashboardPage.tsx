@@ -2,7 +2,6 @@ import { useRef, useState, type UIEvent } from 'react'
 import { ChevronDown, ClipboardList, Download, Package, Upload } from 'lucide-react'
 import { albumSummary } from '../data/album'
 import { FlagIcon } from '../components/FlagIcon'
-import { BrandMark } from '../components/BrandMark'
 import { OptionalLocalImage } from '../components/OptionalLocalImage'
 import { formatDateTime } from '../app/catalog'
 import type { AlbumSettings, TeamProgressStats } from '../types'
@@ -179,8 +178,8 @@ export function DashboardPage({
   return (
     <section className="page-band dashboard-layout">
       <div className="dashboard-main">
-        <div className="page-header">
-          <div>
+        <div className="page-header dashboard-page-header">
+          <div className="dashboard-heading">
             <p className="eyebrow">Visão geral</p>
             <h2>{settings.albumNickname}</h2>
           </div>
@@ -369,11 +368,14 @@ export function DashboardPage({
 
       <aside className="dashboard-side" aria-label="Identidade visual do projeto">
         <section className="dashboard-visual">
-          <BrandMark alt="" />
+          <OptionalLocalImage
+            sources={['/brand/dashboard-lower-art.png', '/brand/custom-mark.png', '/brand/app-mark.svg']}
+            className="dashboard-visual-mark"
+          />
           <strong>Álbum Copa 2026 Local</strong>
           <span>Controle pessoal, offline-first e sem backend.</span>
         </section>
-        <OptionalLocalImage src="/brand/dashboard-lower-art.png" className="dashboard-lower-art" />
+        <OptionalLocalImage src="/brand/sidebar-art.png" className="dashboard-lower-art" />
       </aside>
     </section>
   )

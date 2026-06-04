@@ -11,13 +11,34 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
-.env.*
-!.env.example
 coverage
 .vite
 .cache
 *.tsbuildinfo
+
+# Environment files and local secrets
+.env
+.env.*
+.envrc
+*.env
+*.env.*
+ai-service/.env
+ai-service/.env.*
+!.env.example
+!ai-service/.env.example
+
+# Internal planning and handoff docs
+docs/PROJECT_CONTEXT.md
+docs/AI_ML_IMPLEMENTATION_PLAN.md
+
+# Python local AI service
+ai-service/.venv/
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+ai-service/.pytest_cache/
+ai-service/.mypy_cache/
+ai-service/.pip-audit-cache/
 
 # Local app exports and private collection data
 album-copa-2026-backup-*.json
